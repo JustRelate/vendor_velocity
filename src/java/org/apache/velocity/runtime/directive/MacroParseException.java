@@ -20,6 +20,7 @@ package org.apache.velocity.runtime.directive;
  */
 
 import org.apache.velocity.exception.ExtendedParseException;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.ParseException;
 import org.apache.velocity.runtime.parser.Token;
 
@@ -30,7 +31,7 @@ import org.apache.velocity.runtime.parser.Token;
  *
  * @author <a href="mailto:geirm@apache.org">Geir Magnusson Jr.</a>
  * @author <a href="hps@intermeta.de">Henning P. Schmiedehausen</a>
- * @version $Id: MacroParseException.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: MacroParseException.java 736127 2009-01-20 21:59:00Z byron $
  */
 public class MacroParseException
         extends ParseException
@@ -58,6 +59,7 @@ public class MacroParseException
     /**
      * returns the Template name where this exception occured.
      * @return The Template name where this exception occured.
+     * @since 1.5
      */
     public String getTemplateName()
     {
@@ -67,12 +69,17 @@ public class MacroParseException
     /**
      * returns the line number where this exception occured.
      * @return The line number where this exception occured.
+     * @since 1.5
      */
     public int getLineNumber()
     {
         if ((currentToken != null) && (currentToken.next != null))
         {
             return currentToken.next.beginLine;
+        }
+        else if (currentToken != null)
+        {
+            return currentToken.beginLine;
         }
         else
         {
@@ -83,12 +90,17 @@ public class MacroParseException
     /**
      * returns the column number where this exception occured.
      * @return The column number where this exception occured.
+     * @since 1.5
      */
     public int getColumnNumber()
     {
         if ((currentToken != null) && (currentToken.next != null))
         {
             return currentToken.next.beginColumn;
+        }
+        else if (currentToken != null)
+        {
+            return currentToken.beginColumn;
         }
         else
         {
@@ -106,6 +118,7 @@ public class MacroParseException
      * of the final stack trace, and hence the correct error message
      * gets displayed.
      * @return the current message.
+     * @since 1.5
      */
     public String getMessage()
     {
@@ -179,20 +192,11 @@ public class MacroParseException
 
     /**
      * @param sb
+     * @since 1.5
      */
     protected void appendTemplateInfo(final StringBuffer sb)
     {
-        sb.append(" at line ").append(getLineNumber())
-          .append(", column ").append(getColumnNumber());
-
-        if (getTemplateName() != null)
-        {
-            sb.append(" of ").append(getTemplateName());
-        }
-        else
-        {
-            sb.append(".");
-        }
+        sb.append(Log.formatFileString(getTemplateName(), getLineNumber(), getColumnNumber()));
         sb.append(eol);
     }
 }

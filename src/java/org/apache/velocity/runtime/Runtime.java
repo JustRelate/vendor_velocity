@@ -16,7 +16,7 @@ package org.apache.velocity.runtime;
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License.    
+ * under the License.
  */
 
 import java.io.Reader;
@@ -88,7 +88,7 @@ import org.apache.commons.collections.ExtendedProperties;
  * @see org.apache.velocity.runtime.RuntimeSingleton
  * @deprecated Use RuntimeInstance or RuntimeSingleton instead.
  *
- * @version $Id: Runtime.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: Runtime.java 685390 2008-08-13 00:07:23Z nbubna $
  */
 public class Runtime implements RuntimeConstants
 {
@@ -205,7 +205,7 @@ public class Runtime implements RuntimeConstants
     /**
      * Initialize the Velocity Runtime with the name of
      * ExtendedProperties object.
-     * *
+     *
      * @param configurationFile The name of a properties file.
      * @throws Exception When a problem occurs during init.
      */
@@ -426,6 +426,7 @@ public class Runtime implements RuntimeConstants
      * @param sourceTemplate The template from which the macro is requested.
      * @return boolean  True if added, false if rejected for some
      *                  reason (either parameters or permission settings)
+     * @deprecated Just like the whole class....
      */
     public static boolean addVelocimacro( String name,
                                           String macro,

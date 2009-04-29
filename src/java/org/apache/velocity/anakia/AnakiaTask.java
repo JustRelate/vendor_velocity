@@ -60,7 +60,7 @@ import org.xml.sax.SAXParseException;
  *
  * @author <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
  * @author <a href="mailto:szegedia@freemail.hu">Attila Szegedi</a>
- * @version $Id: AnakiaTask.java 500772 2007-01-28 10:28:09Z henning $
+ * @version $Id: AnakiaTask.java 501574 2007-01-30 21:32:26Z henning $
  */
 public class AnakiaTask extends MatchingTask
 {

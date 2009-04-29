@@ -33,6 +33,7 @@ import java.util.Map;
 
 import org.apache.commons.collections.ExtendedProperties;
 import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.io.UnicodeInputStream;
 import org.apache.velocity.runtime.resource.Resource;
 import org.apache.velocity.util.StringUtils;
@@ -45,7 +46,7 @@ import org.apache.velocity.util.StringUtils;
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
  * @author <a href="mailto:mailmur@yahoo.com">Aki Nieminen</a>
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: FileResourceLoader.java 499441 2007-01-24 15:25:58Z henning $
+ * @version $Id: FileResourceLoader.java 743617 2009-02-12 04:42:48Z nbubna $
  */
 public class FileResourceLoader extends ResourceLoader
 {
@@ -87,15 +88,16 @@ public class FileResourceLoader extends ResourceLoader
             log.debug("Do unicode file recognition:  " + unicode);
         }
 
-        // trim spaces from all paths
-        StringUtils.trimStrings(paths);
-        if (log.isInfoEnabled())
+        if (log.isDebugEnabled())
         {
+            // trim spaces from all paths
+            StringUtils.trimStrings(paths);
+
             // this section lets tell people what paths we will be using
             int sz = paths.size();
             for( int i=0; i < sz; i++)
             {
-                log.info("FileResourceLoader : adding path '" + (String) paths.get(i) + "'");
+                log.debug("FileResourceLoader : adding path '" + (String) paths.get(i) + "'");
             }
             log.trace("FileResourceLoader : initialization complete.");
         }
@@ -151,7 +153,9 @@ public class FileResourceLoader extends ResourceLoader
             }
             catch (IOException ioe)
             {
-                log.error("While loading Template " + template + ": ", ioe);
+                String msg = "Exception while loading Template " + template;
+                log.error(msg, ioe);
+                throw new VelocityException(msg, ioe);
             }
 
             if (inputStream != null)
@@ -172,6 +176,43 @@ public class FileResourceLoader extends ResourceLoader
          * throw an exception.
          */
          throw new ResourceNotFoundException("FileResourceLoader : cannot find " + template);
+    }
+
+    /**
+     * Overrides superclass for better performance.
+     * @since 1.6
+     */
+    public boolean resourceExists(String name)
+    {
+        if (name == null)
+        {
+            return false;
+        }
+        name = StringUtils.normalizePath(name);
+        if (name == null || name.length() == 0)
+        {
+            return false;
+        }
+
+        int size = paths.size();
+        for (int i = 0; i < size; i++)
+        {
+            String path = (String)paths.get(i);
+            try
+            {
+                File file = getFile(path, name);
+                if (file.canRead())
+                {
+                    return true;
+                }
+            }
+            catch (Exception ioe)
+            {
+                String msg = "Exception while checking for template " + name;
+                log.debug(msg, ioe);
+            }
+        }
+        return false;
     }
 
     /**

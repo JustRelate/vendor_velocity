@@ -32,7 +32,7 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.runtime.RuntimeSingleton;
-import org.apache.velocity.runtime.log.NullLogChute;
+import org.apache.velocity.test.misc.TestLogChute;
 
 /**
  * Tests if we are context safe : can we switch objects in the context
@@ -45,7 +45,7 @@ import org.apache.velocity.runtime.log.NullLogChute;
  * RuntimeTestCase causes the Runtime to be initialized twice.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ContextSafetyTestCase.java 477002 2006-11-20 01:07:43Z henning $
+ * @version $Id: ContextSafetyTestCase.java 704299 2008-10-14 03:13:16Z nbubna $
  */
 public class ContextSafetyTestCase extends BaseTestCase implements TemplateTestBase
 {
@@ -61,7 +61,7 @@ public class ContextSafetyTestCase extends BaseTestCase implements TemplateTestB
                 Velocity.FILE_RESOURCE_LOADER_PATH, FILE_RESOURCE_LOADER_PATH);
 
         Velocity.setProperty(
-                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
+                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, TestLogChute.class.getName());
 
         Velocity.init();
     }

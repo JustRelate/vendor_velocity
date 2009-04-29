@@ -61,7 +61,7 @@ import org.apache.velocity.test.provider.TestProvider;
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
- * @version $Id: TemplateTestCase.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: TemplateTestCase.java 685369 2008-08-12 23:35:12Z nbubna $
  */
 public class TemplateTestCase extends BaseTestCase implements TemplateTestBase
 {
@@ -211,7 +211,8 @@ public class TemplateTestCase extends BaseTestCase implements TemplateTestBase
         if (!isMatch(RESULT_DIR,COMPARE_DIR,baseFileName,
                 RESULT_FILE_EXT,CMP_FILE_EXT))
         {
-            fail("Processed template did not match expected output");
+            fail("Processed template "+getFileName(
+                RESULT_DIR, baseFileName, RESULT_FILE_EXT)+" did not match expected output");
         }
     }
 }

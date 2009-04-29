@@ -39,9 +39,9 @@ import org.apache.velocity.util.ExceptionUtils;
  *
  * @author <a href="mailto:mailmur@yahoo.com">Aki Nieminen</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: UnicodeInputStream.java 500638 2007-01-27 22:16:10Z henning $
+ * @version $Id: UnicodeInputStream.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
-
 public class UnicodeInputStream
     extends InputStream
 {
@@ -348,7 +348,7 @@ public class UnicodeInputStream
      * Helper class to bundle encoding and BOM marker.
      *
      * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
-     * @version $Id: UnicodeInputStream.java 500638 2007-01-27 22:16:10Z henning $
+     * @version $Id: UnicodeInputStream.java 685685 2008-08-13 21:43:27Z nbubna $
      */
     static final class UnicodeBOM
     {

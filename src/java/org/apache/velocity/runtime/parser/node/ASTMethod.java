@@ -27,8 +27,9 @@ import org.apache.velocity.app.event.EventHandlerUtil;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
+import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.util.introspection.Info;
 import org.apache.velocity.util.introspection.IntrospectionCacheData;
 import org.apache.velocity.util.introspection.VelMethod;
@@ -47,7 +48,7 @@ import org.apache.velocity.util.introspection.VelMethod;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTMethod.java 489650 2006-12-22 13:31:58Z cbrisson $
+ * @version $Id: ASTMethod.java 720228 2008-11-24 16:58:33Z nbubna $
  */
 public class ASTMethod extends SimpleNode
 {
@@ -55,6 +56,11 @@ public class ASTMethod extends SimpleNode
     private int paramCount = 0;
 
     protected Info uberInfo;
+
+    /**
+     * Indicates if we are running in strict reference mode.
+     */
+    protected boolean strictRef = false;
 
     /**
      * @param id
@@ -74,7 +80,7 @@ public class ASTMethod extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -98,7 +104,7 @@ public class ASTMethod extends SimpleNode
          * make an uberinfo - saves new's later on
          */
 
-        uberInfo = new Info(context.getCurrentTemplateName(),
+        uberInfo = new Info(getTemplateName(),
                 getLine(),getColumn());
         /*
          *  this is about all we can do
@@ -107,6 +113,8 @@ public class ASTMethod extends SimpleNode
         methodName = getFirstToken().image;
         paramCount = jjtGetNumChildren() - 1;
 
+        strictRef = rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false);
+        
         return data;
     }
 
@@ -181,7 +189,7 @@ public class ASTMethod extends SimpleNode
                  *  cache it
                  */
 
-                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(context.getCurrentTemplateName(), getLine(), getColumn()));
+                method = rsvc.getUberspect().getMethod(o, methodName, params, new Info(getTemplateName(), getLine(), getColumn()));
 
                 if ((method != null) && (o != null))
                 {
@@ -201,7 +209,24 @@ public class ASTMethod extends SimpleNode
 
             if (method == null)
             {
-                return null;
+                if (strictRef)                  
+                {
+                    // Create a parameter list for the exception error message
+                    StringBuffer plist = new StringBuffer();
+                    for (int i=0; i<params.length; i++)
+                    {
+                      Class param = paramClasses[i];
+                      plist.append(param == null ? "null" : param.getName());
+                      if (i < params.length -1) plist.append(", ");
+                    }
+                    throw new MethodInvocationException("Object '" + o.getClass().getName() +
+                      "' does not contain method " + methodName + "(" + plist + ")", 
+                      null, methodName, uberInfo.getTemplateName(), uberInfo.getLine(), uberInfo.getColumn());
+                }
+                else
+                {
+                    return null;
+                }
             }
         }
         catch( MethodInvocationException mie )
@@ -226,9 +251,9 @@ public class ASTMethod extends SimpleNode
             /*
              *  can come from the doIntropection() also, from Introspector
              */
-
-            log.error("ASTMethod.execute() : exception from introspection", e);
-            return null;
+            String msg = "ASTMethod.execute() : exception from introspection";
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
 
         try
@@ -256,55 +281,15 @@ public class ASTMethod extends SimpleNode
         }
         catch( InvocationTargetException ite )
         {
-            /*
-             *  In the event that the invocation of the method
-             *  itself throws an exception, we want to catch that
-             *  wrap it, and throw.  We don't log here as we want to figure
-             *  out which reference threw the exception, so do that
-             *  above
-             */
-
-            /*
-             *  let non-Exception Throwables go...
-             */
-
-            Throwable t = ite.getTargetException();
-            if (t instanceof Exception)
-            {
-                try
-                {
-                    return EventHandlerUtil.methodException( rsvc, context, o.getClass(), methodName, (Exception) t );
-                }
-
-                /**
-                 * If the event handler throws an exception, then wrap it
-                 * in a MethodInvocationException.  Don't pass through RuntimeExceptions like other
-                 * similar catchall code blocks.
-                 */
-                catch( Exception e )
-                {
-                    throw new MethodInvocationException(
-                        "Invocation of method '"
-                        + methodName + "' in  " + o.getClass()
-                        + " threw exception "
-                        + e.toString(),
-                        e, methodName, context.getCurrentTemplateName(), this.getLine(), this.getColumn());
-                }
-            }
-            else
-            {
-                /*
-                 * no event cartridge to override. Just throw
-                 */
-
-                throw new MethodInvocationException(
-                "Invocation of method '"
-                + methodName + "' in  " + o.getClass()
-                + " threw exception "
-                + ite.getTargetException().toString(),
-                ite.getTargetException(), methodName, context.getCurrentTemplateName(), this.getLine(), this.getColumn());
-            }
+            return handleInvocationException(o, context, ite.getTargetException());
         }
+        
+        /** Can also be thrown by method invocation **/
+        catch( IllegalArgumentException t )
+        {
+            return handleInvocationException(o, context, t);
+        }
+        
         /**
          * pass through application level runtime exceptions
          */
@@ -314,9 +299,61 @@ public class ASTMethod extends SimpleNode
         }
         catch( Exception e )
         {
-            log.error("ASTMethod.execute() : exception invoking method '"
-                      + methodName + "' in " + o.getClass(), e);
-            return null;
+            String msg = "ASTMethod.execute() : exception invoking method '"
+                         + methodName + "' in " + o.getClass();
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
+        }
+    }
+
+    private Object handleInvocationException(Object o, InternalContextAdapter context, Throwable t)
+    {
+        /*
+         *  In the event that the invocation of the method
+         *  itself throws an exception, we want to catch that
+         *  wrap it, and throw.  We don't log here as we want to figure
+         *  out which reference threw the exception, so do that
+         *  above
+         */
+
+        /*
+         *  let non-Exception Throwables go...
+         */
+
+        if (t instanceof Exception)
+        {
+            try
+            {
+                return EventHandlerUtil.methodException( rsvc, context, o.getClass(), methodName, (Exception) t );
+            }
+
+            /**
+             * If the event handler throws an exception, then wrap it
+             * in a MethodInvocationException.  Don't pass through RuntimeExceptions like other
+             * similar catchall code blocks.
+             */
+            catch( Exception e )
+            {
+                throw new MethodInvocationException(
+                    "Invocation of method '"
+                    + methodName + "' in  " + o.getClass()
+                    + " threw exception "
+                    + e.toString(),
+                    e, methodName, getTemplateName(), this.getLine(), this.getColumn());
+            }
+        }
+        else
+        {
+            /*
+             * no event cartridge to override. Just throw
+             */
+
+            throw new MethodInvocationException(
+            "Invocation of method '"
+            + methodName + "' in  " + o.getClass()
+            + " threw exception "
+            + t.toString(),
+            t, methodName, getTemplateName(), this.getLine(), this.getColumn());
         }
     }
 
@@ -325,6 +362,7 @@ public class ASTMethod extends SimpleNode
      * ASTMethod fields with array of parameter classes.  Has
      * public access (and complete constructor) for unit test 
      * purposes.
+     * @since 1.5
      */
     public static class MethodCacheKey
     {
@@ -405,6 +443,7 @@ public class ASTMethod extends SimpleNode
 
     /**
      * @return Returns the methodName.
+     * @since 1.5
      */
     public String getMethodName()
     {

@@ -20,11 +20,8 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import org.apache.velocity.context.InternalContextAdapter;
-import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
-
 import org.apache.velocity.exception.MethodInvocationException;
-
+import org.apache.velocity.runtime.parser.Parser;
 import org.apache.velocity.util.TemplateNumber;
 
 /**
@@ -56,7 +53,7 @@ public class ASTNENode extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -71,23 +68,6 @@ public class ASTNENode extends SimpleNode
     {
         Object left = jjtGetChild(0).value( context );
         Object right = jjtGetChild(1).value( context );
-
-        /*
-         *  null check
-         */
-
-        if ( left == null || right == null)
-        {
-            log.error((left == null ? "Left" : "Right")
-                           + " side ("
-                           + jjtGetChild( (left == null? 0 : 1) ).literal()
-                           + ") of '!=' operation has null value."
-                           + " Operation not possible. "
-                           + context.getCurrentTemplateName() + " [line " + getLine()
-                           + ", column " + getColumn() + "]");
-            return false;
-
-        }
 
         /*
          *  convert to Number if applicable
@@ -109,43 +89,56 @@ public class ASTNENode extends SimpleNode
             return MathUtils.compare ( (Number)left,(Number)right) != 0;
        }
 
-
-       /**
-        * assume that if one class is a subclass of the other
-        * that we should use the equals operator
-        */
-
-        if (left.getClass().isAssignableFrom(right.getClass()) ||
-                right.getClass().isAssignableFrom(left.getClass()) )
+        /**
+         * if both are not null, then assume that if one class
+         * is a subclass of the other that we should use the equals operator
+         */
+        if (left != null && right != null &&
+            (left.getClass().isAssignableFrom(right.getClass()) ||
+             right.getClass().isAssignableFrom(left.getClass())))
         {
             return !left.equals( right );
         }
+
+        /*
+         * Ok, time to compare string values
+         */
+        left = (left == null) ? null : left.toString();
+        right = (right == null) ? null: right.toString();
+
+        if (left == null && right == null)
+        {
+            if (log.isDebugEnabled())
+            {
+                log.debug("Both right (" + getLiteral(false) + " and left "
+                          + getLiteral(true) + " sides of '!=' operation returned null."
+                          + "If references, they may not be in the context."
+                          + getLocation(context));
+            }
+            return false;
+        }
+        else if (left == null || right == null)
+        {
+            if (log.isDebugEnabled())
+            {
+                log.debug((left == null ? "Left" : "Right")
+                        + " side (" + getLiteral(left == null)
+                        + ") of '!=' operation has null value. If it is a "
+                        + "reference, it may not be in the context or its "
+                        + "toString() returned null. " + getLocation(context));
+
+            }
+            return true;
+        }
         else
         {
-            /**
-             * Compare the String representations
-             */
-            if ((left.toString() == null) || (right.toString() == null))
-            {
-        	boolean culprit =  (left.toString() == null);
-                log.error((culprit ? "Left" : "Right")
-                        + " string side "
-                        + "String representation ("
-                        + jjtGetChild((culprit ? 0 : 1) ).literal()
-                        + ") of '!=' operation has null value."
-                        + " Operation not possible. "
-                        + context.getCurrentTemplateName() + " [line " + getLine()
-                        + ", column " + getColumn() + "]");
-                return false;
-            }
-
-            else
-            {
-                return !left.toString().equals(right.toString());
-            }
-
+            return !left.equals(right);
         }
+    }
 
+    private String getLiteral(boolean left)
+    {
+        return jjtGetChild(left ? 0 : 1).literal();
     }
 
     /**

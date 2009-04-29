@@ -1,6 +1,7 @@
 package org.apache.velocity.exception;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.velocity.runtime.log.Log;
 
 /*
  * Licensed to the Apache Software Foundation (ASF) under one
@@ -32,7 +33,7 @@ import org.apache.commons.lang.StringUtils;
  *  information, consult the runtime log.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: MethodInvocationException.java 471254 2006-11-04 20:11:29Z henning $
+ * @version $Id: MethodInvocationException.java 703544 2008-10-10 18:15:53Z nbubna $
  */
 public class MethodInvocationException extends VelocityException implements ExtendedParseException
 {
@@ -102,38 +103,41 @@ public class MethodInvocationException extends VelocityException implements Exte
 
     /**
      * @see ExtendedParseException#getColumnNumber()
+     * @since 1.5
      */
     public int getColumnNumber()
     {
-	return columnNumber;
+	    return columnNumber;
     }
 
     /**
      * @see ExtendedParseException#getLineNumber()
+     * @since 1.5
      */
     public int getLineNumber()
     {
-	return lineNumber;
+	    return lineNumber;
     }
 
     /**
      * @see ExtendedParseException#getTemplateName()
+     * @since 1.5
      */
     public String getTemplateName()
     {
-	return templateName;
+	    return templateName;
     }
 
     /**
      * @see Exception#getMessage()
+     * @since 1.5
      */
     public String getMessage()
     {
         StringBuffer message = new StringBuffer();
         message.append(super.getMessage());
-        message.append(" @ ");
-        message.append(StringUtils.isNotEmpty(templateName) ? templateName : "<unknown template>");
-        message.append("[").append(lineNumber).append(",").append(columnNumber).append("]");
+        message.append(" at ");
+        message.append(Log.formatFileString(templateName, lineNumber, columnNumber));
         return message.toString();
     }
 }

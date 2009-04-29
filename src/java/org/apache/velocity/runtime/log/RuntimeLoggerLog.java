@@ -33,8 +33,9 @@ import org.apache.velocity.runtime.RuntimeLogger;
  * and this class will therefore never be used.  But it's here just in case.
  *
  * @author <a href="mailto:nbubna@apache.org">Nathan Bubna</a>
- * @version $Id: RuntimeLoggerLog.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: RuntimeLoggerLog.java 685685 2008-08-13 21:43:27Z nbubna $
  * @deprecated This will be removed along with the RuntimeLogger interface.
+ * @since 1.5
  */
 public class RuntimeLoggerLog extends Log
 {

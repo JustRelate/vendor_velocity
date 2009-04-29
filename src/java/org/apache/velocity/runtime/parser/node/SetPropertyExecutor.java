@@ -22,6 +22,8 @@ package org.apache.velocity.runtime.parser.node;
 import java.lang.reflect.InvocationTargetException;
 
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.text.StrBuilder;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.util.introspection.Introspector;
 
@@ -30,7 +32,8 @@ import org.apache.velocity.util.introspection.Introspector;
  * This will try to find a set&lt;foo&gt;(key, value) method
  *
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: SetPropertyExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: SetPropertyExecutor.java 687177 2008-08-19 22:00:32Z nbubna $
+ * @since 1.5
  */
 public class SetPropertyExecutor
         extends SetExecutor
@@ -78,7 +81,7 @@ public class SetPropertyExecutor
 
         try
         {
-            StringBuffer sb = new StringBuffer("set");
+            StrBuilder sb = new StrBuilder("set");
             sb.append(property);
 
             setMethod(introspector.getMethod(clazz, sb.toString(), params));
@@ -112,7 +115,9 @@ public class SetPropertyExecutor
         }
         catch(Exception e)
         {
-            log.error("While looking for property setter for '" + property + "':", e);
+            String msg = "Exception while looking for property setter for '" + property;
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 

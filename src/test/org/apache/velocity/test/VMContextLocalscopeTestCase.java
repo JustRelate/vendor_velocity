@@ -22,7 +22,7 @@ package org.apache.velocity.test;
 import junit.framework.TestCase;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.context.InternalContextAdapterImpl;
-import org.apache.velocity.context.VMContext;
+import org.apache.velocity.context.ProxyVMContext;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.RuntimeInstance;
 
@@ -30,7 +30,7 @@ import org.apache.velocity.runtime.RuntimeInstance;
  * Tests scope of velocimacros with localscope setting. 
  * 
  * @author <a href="mailto:stephenh@chase3000.com">Stephen Habermann</a>
- * @version $Id: VMContextLocalscopeTestCase.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: VMContextLocalscopeTestCase.java 685433 2008-08-13 04:18:27Z nbubna $
  */
 public class VMContextLocalscopeTestCase extends TestCase {
 
@@ -48,7 +48,7 @@ public class VMContextLocalscopeTestCase extends TestCase {
         VelocityContext base = new VelocityContext();
         base.put("outsideVar", "value1");
 
-        VMContext vm = new VMContext(new InternalContextAdapterImpl(base), this.instance);
+        ProxyVMContext vm = new ProxyVMContext(new InternalContextAdapterImpl(base), this.instance, true);
         vm.put("newLocalVar", "value2");
 
         // New variable put doesn't leak

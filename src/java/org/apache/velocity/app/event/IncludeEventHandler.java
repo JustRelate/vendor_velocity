@@ -27,7 +27,8 @@ import org.apache.velocity.util.ContextAware;
  *  Allows the developer to modify the path of the resource returned.
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
- * @version $Id: IncludeEventHandler.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: IncludeEventHandler.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public interface  IncludeEventHandler extends EventHandler
 {

@@ -19,8 +19,10 @@ package org.apache.velocity.runtime.parser.node;
  * under the License.    
  */
 
+import org.apache.commons.lang.text.StrBuilder;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.runtime.parser.ParserConstants;
 import org.apache.velocity.runtime.parser.Token;
 
 /**
@@ -28,10 +30,22 @@ import org.apache.velocity.runtime.parser.Token;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: NodeUtils.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: NodeUtils.java 687386 2008-08-20 16:57:07Z nbubna $
  */
 public class NodeUtils
 {
+    /**
+     * @deprecated use getSpecialText(Token t)
+     */
+    public static String specialText(Token t)
+    {
+        if (t.specialToken == null || t.specialToken.image.startsWith("##") )
+        {
+            return "";
+        }
+        return getSpecialText(t).toString();
+    }
+
     /**
      * Collect all the <SPECIAL_TOKEN>s that
      * are carried along with a token. Special
@@ -40,17 +54,12 @@ public class NodeUtils
      * In some cases you may want to retrieve these
      * special tokens, this is simply a way to
      * extract them.
-     * @param t
-     * @return String with the special tokens.
+     * @param t the Token
+     * @return StrBuilder with the special tokens.
      */
-    public static String specialText(Token t)
+    public static StrBuilder getSpecialText(Token t)
     {
-        StringBuffer specialText = new StringBuffer();
-
-        if (t.specialToken == null || t.specialToken.image.startsWith("##") )
-        {
-            return "";
-        }
+        StrBuilder sb = new StrBuilder();
 
         Token tmp_t = t.specialToken;
 
@@ -63,9 +72,7 @@ public class NodeUtils
         {
             String st = tmp_t.image;
 
-            StringBuffer sb = new StringBuffer();
-
-            for(int i = 0; i < st.length(); i++)
+            for(int i = 0, is = st.length(); i < is; i++)
             {
                 char c = st.charAt(i);
 
@@ -86,7 +93,7 @@ public class NodeUtils
                     boolean term = false;
 
                     int j = i;
-                    for( ok = true; ok && j < st.length(); j++)
+                    for( ok = true; ok && j < is; j++)
                     {
                         char cc = st.charAt( j );
 
@@ -123,34 +130,38 @@ public class NodeUtils
                 }
             }
 
-            // This is a potential JDK 1.3/JDK 1.4 gotcha. If we remove
-            // the toString() method call, then when compiling under JDK 1.4,
-            // this will be mapped to StringBuffer.append(StringBuffer) and
-            // under JDK 1.3, it will be mapped to StringBuffer.append(Object).
-            // So the JDK 1.4 compiled jar will bomb out under JDK 1.3 with a
-            // MethodNotFound error.
-            //
-            // @todo Once we are JDK 1.4+ only, remove the toString(), make this
-            // loop perform a little bit better.
-            specialText.append(sb.toString());
-
             tmp_t = tmp_t.next;
         }
-
-        return specialText.toString();
+        return sb;
     }
 
     /**
      *  complete node literal
      * @param t
      * @return A node literal.
-     *
      */
     public static String tokenLiteral( Token t )
     {
-        return specialText( t ) + t.image;
-    }
-
+        // Look at kind of token and return "" when it's a multiline comment
+        if (t.kind == ParserConstants.MULTI_LINE_COMMENT) 
+        {
+            return "";
+        } 
+        else if (t.specialToken == null || t.specialToken.image.startsWith("##"))
+        {
+            return t.image;
+        }
+        else 
+        {
+            StrBuilder special = getSpecialText(t);
+            if (special.length() > 0)
+            {
+                return special.append(t.image).toString();
+            }
+            return t.image;
+        }
+    } 
+    
     /**
      * Utility method to interpolate context variables
      * into string literals. So that the following will
@@ -162,6 +173,9 @@ public class NodeUtils
      * And the string literal argument will
      * be transformed into "candy.jpg" before
      * the method is executed.
+     * 
+     * @deprecated this method isn't called by any class
+     * 
      * @param argStr
      * @param vars
      * @return Interpoliation result.
@@ -169,43 +183,46 @@ public class NodeUtils
      */
     public static String interpolate(String argStr, Context vars) throws MethodInvocationException
     {
-        StringBuffer argBuf = new StringBuffer();
+        // if there's nothing to replace, skip this (saves buffer allocation)
+        if( argStr.indexOf('$') == -1 )
+            return argStr;
+        
+        StrBuilder argBuf = new StrBuilder();
 
-        for (int cIdx = 0 ; cIdx < argStr.length();)
+        for (int cIdx = 0, is = argStr.length(); cIdx < is;)
         {
             char ch = argStr.charAt(cIdx);
-
-            switch (ch)
+            
+            if( ch == '$' )
             {
-                case '$':
-                    StringBuffer nameBuf = new StringBuffer();
-                    for (++cIdx ; cIdx < argStr.length(); ++cIdx)
-                    {
-                        ch = argStr.charAt(cIdx);
-                        if (ch == '_' || ch == '-'
-                            || Character.isLetterOrDigit(ch))
-                            nameBuf.append(ch);
-                        else if (ch == '{' || ch == '}')
-                            continue;
-                        else
-                            break;
-                    }
+                StrBuilder nameBuf = new StrBuilder();
+                for (++cIdx ; cIdx < is; ++cIdx)
+                {
+                    ch = argStr.charAt(cIdx);
+                    if (ch == '_' || ch == '-'
+                        || Character.isLetterOrDigit(ch))
+                        nameBuf.append(ch);
+                    else if (ch == '{' || ch == '}')
+                        continue;
+                    else
+                        break;
+                }
 
-                    if (nameBuf.length() > 0)
-                    {
-                        Object value = vars.get(nameBuf.toString());
+                if (nameBuf.length() > 0)
+                {
+                    Object value = vars.get(nameBuf.toString());
 
-                        if (value == null)
-                            argBuf.append("$").append(nameBuf.toString());
-                        else
-                            argBuf.append(value.toString());
-                    }
-                    break;
-
-                default:
-                    argBuf.append(ch);
-                    ++cIdx;
-                    break;
+                    if (value == null)
+                        argBuf.append("$").append(nameBuf.toString());
+                    else
+                        argBuf.append(value.toString());
+                }
+                
+            }
+            else
+            {
+                argBuf.append(ch);
+                ++cIdx;
             }
         }
 

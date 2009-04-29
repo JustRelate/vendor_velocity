@@ -20,9 +20,11 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import org.apache.velocity.context.InternalContextAdapter;
-import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.exception.VelocityException;
+import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.log.Log;
+import org.apache.velocity.runtime.parser.Parser;
 import org.apache.velocity.util.TemplateNumber;
 
 /**
@@ -58,7 +60,7 @@ public class ASTGTNode extends SimpleNode
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -84,14 +86,18 @@ public class ASTGTNode extends SimpleNode
 
         if (left == null || right == null)
         {
-            log.error((left == null ? "Left" : "Right")
+            String msg = (left == null ? "Left" : "Right")
                            + " side ("
                            + jjtGetChild( (left == null? 0 : 1) ).literal()
-                           + ") of '>' operation has null value."
-                           + " Operation not possible. "
-                           + context.getCurrentTemplateName() + " [line "
-                           + getLine()
-                           + ", column " + getColumn() + "]");
+                           + ") of '>' operation has null value at "
+                           + Log.formatFileString(this);
+
+            if (rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false))
+            {
+              throw new VelocityException(msg);
+            }
+
+            log.error(msg);
             return false;
         }
 
@@ -113,11 +119,16 @@ public class ASTGTNode extends SimpleNode
 
         if ( !( left instanceof Number )  || !( right instanceof Number ))
         {
-            log.error((!(left instanceof Number) ? "Left" : "Right")
-                           + " side of '>=' operation is not a Numbere. "
-                           +  context.getCurrentTemplateName() + " [line " + getLine()
-                           + ", column " + getColumn() + "]");
+            String msg = (!(left instanceof Number) ? "Left" : "Right")
+                           + " side of '>=' operation is not a Number at "
+                           + Log.formatFileString(this);
 
+            if (rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false))
+            {
+              throw new VelocityException(msg);
+            }
+            
+            log.error(msg);
             return false;
         }
 

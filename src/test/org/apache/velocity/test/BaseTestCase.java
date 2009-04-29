@@ -33,7 +33,7 @@ import org.apache.velocity.util.StringUtils;
  * the rest of the tests.
  *
  * @author <a href="mailto:dlr@finemaltcoding.com">Daniel Rall</a>
- * @version $Id: BaseTestCase.java 490718 2006-12-28 13:35:49Z wglass $
+ * @version $Id: BaseTestCase.java 689111 2008-08-26 15:27:06Z nbubna $
  */
 public abstract class BaseTestCase
         extends TestCase
@@ -121,15 +121,20 @@ public abstract class BaseTestCase
         File dir = new File(resultsDirectory);
         if (!dir.exists())
         {
-            RuntimeSingleton.getLog().info("Template results directory does not exist");
+            String msg = "Template results directory ("+resultsDirectory+")does not exist";
+            RuntimeSingleton.getLog().info(msg);
             if (dir.mkdirs())
             {
                 RuntimeSingleton.getLog().info("Created template results directory");
+//caveman hack to get gump to give more info
+System.out.println("Created template results directory: "+resultsDirectory);
             }
             else
             {
                 String errMsg = "Unable to create template results directory";
                 RuntimeSingleton.getLog().warn(errMsg);
+//caveman hack to get gump to give more info
+System.out.println(errMsg);
                 fail(errMsg);
             }
         }
@@ -171,7 +176,13 @@ public abstract class BaseTestCase
         return isMatch(result,compareDir,baseFileName,compareExt);
     }
 
-    
+
+    protected String getFileContents(String dir, String baseFileName, String ext)
+    {
+        return StringUtils
+            .fileContentsToString(getFileName(dir, baseFileName, ext, true));
+    }
+
     /**
      * Returns whether the processed template matches the
      * content of the provided comparison file.

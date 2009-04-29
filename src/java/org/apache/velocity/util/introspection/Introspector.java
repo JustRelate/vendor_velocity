@@ -52,20 +52,13 @@ import org.apache.velocity.runtime.log.RuntimeLoggerLog;
  * @author <a href="mailto:szegedia@freemail.hu">Attila Szegedi</a>
  * @author <a href="mailto:paulo.gaspar@krankikom.de">Paulo Gaspar</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: Introspector.java 477003 2006-11-20 01:14:22Z henning $
+ * @version $Id: Introspector.java 687177 2008-08-19 22:00:32Z nbubna $
  */
 public class Introspector extends IntrospectorBase
 {
     /**
-     *  define a public string so that it can be looked for
-     *  if interested
-     */
-
-    public final static String CACHEDUMP_MSG =
-        "Introspector: detected classloader change. Dumping cache.";
-
-    /**
      * @param log A Log object to use for the introspector.
+     * @since 1.5
      */
     public Introspector(final Log log)
     {
@@ -130,18 +123,10 @@ public class Introspector extends IntrospectorBase
             msg.append(") for class ")
                     .append(c);
 
-            log.error(msg.toString());
+            log.debug(msg.toString());
         }
 
         return null;
     }
 
-    /**
-     * Logs that the Introspector Cache has been cleared.
-     */
-    public void triggerClear()
-    {
-	super.triggerClear();
-        log.info(CACHEDUMP_MSG);
-    }
 }

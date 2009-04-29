@@ -19,6 +19,7 @@ package org.apache.velocity.runtime.parser.node;
  * under the License.    
  */
 
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeLogger;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.log.RuntimeLoggerLog;
@@ -35,7 +36,7 @@ import org.apache.velocity.util.introspection.Introspector;
  *  by is<Property>
  *
  *  @author <a href="geirm@apache.org">Geir Magnusson Jr.</a>
- *  @version $Id: BooleanPropertyExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ *  @version $Id: BooleanPropertyExecutor.java 687502 2008-08-20 23:19:52Z nbubna $
  */
 public class BooleanPropertyExecutor extends PropertyExecutor
 {
@@ -44,6 +45,7 @@ public class BooleanPropertyExecutor extends PropertyExecutor
      * @param introspector
      * @param clazz
      * @param property
+     * @since 1.5
      */
     public BooleanPropertyExecutor(final Log log, final Introspector introspector,
             final Class clazz, final String property)
@@ -94,12 +96,13 @@ public class BooleanPropertyExecutor extends PropertyExecutor
 
                 setMethod(getIntrospector().getMethod(clazz, sb.toString(), params));
             }
-
+            
             if (isAlive())
             {
-                if (getMethod().getReturnType() != Boolean.TYPE)
+                if( getMethod().getReturnType() != Boolean.TYPE &&
+                    getMethod().getReturnType() != Boolean.class )
                 {
-                    setMethod(null); // That case is rare but not unknown
+                    setMethod(null);
                 }
             }
         }
@@ -112,7 +115,9 @@ public class BooleanPropertyExecutor extends PropertyExecutor
         }
         catch(Exception e)
         {
-            log.error("While looking for boolean property getter for '" + property + "':", e);
+            String msg = "Exception while looking for boolean property getter for '" + property;
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 }

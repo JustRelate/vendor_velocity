@@ -35,14 +35,14 @@ import org.apache.velocity.app.event.IncludeEventHandler;
 import org.apache.velocity.context.Context;
 import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.RuntimeSingleton;
-import org.apache.velocity.runtime.log.NullLogChute;
+import org.apache.velocity.test.misc.TestLogChute;
 import org.apache.velocity.util.RuntimeServicesAware;
 
 /**
  *  Tests event handling
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: IncludeEventHandlingTestCase.java 477002 2006-11-20 01:07:43Z henning $
+ * @version $Id: IncludeEventHandlingTestCase.java 704299 2008-10-14 03:13:16Z nbubna $
  */
 public class IncludeEventHandlingTestCase extends BaseTestCase implements IncludeEventHandler,RuntimeServicesAware
 {
@@ -102,7 +102,7 @@ public class IncludeEventHandlingTestCase extends BaseTestCase implements Includ
             Velocity.FILE_RESOURCE_LOADER_PATH, FILE_RESOURCE_LOADER_PATH);
 
         Velocity.setProperty(
-                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
+                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, TestLogChute.class.getName());
 
         Velocity.init();
 

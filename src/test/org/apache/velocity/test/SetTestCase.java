@@ -37,7 +37,7 @@ import org.apache.velocity.runtime.RuntimeConstants;
  * Test that an instance of a ResourceLoader can be successfully passed in.
  *
  * @author <a href="mailto:wglass@apache.org">Will Glass-Husain</a>
- * @version $Id: SetTestCase.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: SetTestCase.java 599003 2007-11-28 13:55:49Z cbrisson $
  */
 public class SetTestCase extends BaseTestCase
 {
@@ -118,7 +118,7 @@ public class SetTestCase extends BaseTestCase
         checkTemplate(ve,"set1");
 
         /**
-         * Check that #set can accept nulls
+         * Check that #set can accept nulls, and has the correct behaviour for complex LHS
          */
         ve = new VelocityEngine();
         ve.addProperty(RuntimeConstants.SET_NULL_ALLOWED, "true");

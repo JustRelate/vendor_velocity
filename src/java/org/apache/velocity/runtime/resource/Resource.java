@@ -34,7 +34,7 @@ import org.apache.velocity.exception.ParseErrorException;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: Resource.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: Resource.java 685724 2008-08-13 23:12:12Z nbubna $
  */
 public abstract class Resource
 {
@@ -83,6 +83,11 @@ public abstract class Resource
      *  Resource might require ancillary storage of some kind
      */
     protected Object data = null;
+
+    /**
+     *  Resource type (RESOURCE_TEMPLATE or RESOURCE_CONTENT)
+     */
+    protected int type;
 
     /**
      *  Default constructor
@@ -266,5 +271,23 @@ public abstract class Resource
     public Object getData()
     {
         return data;
+    }
+    
+    /**
+     * Sets the type of this Resource (RESOURCE_TEMPLATE or RESOURCE_CONTENT)
+     * @since 1.6
+     */
+    public void setType(int type)
+    {
+        this.type = type;
+    }
+    
+    /**
+     * @return type code of the Resource
+     * @since 1.6
+     */
+    public int getType()
+    {
+        return type;
     }
 }

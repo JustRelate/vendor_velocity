@@ -25,7 +25,8 @@ package org.apache.velocity.runtime.resource.util;
  *
  * @author <a href="mailto:eelco.hillenius@openedge.nl">Eelco Hillenius</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: StringResource.java 479058 2006-11-25 00:26:32Z henning $
+ * @version $Id: StringResource.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public final class StringResource
 {

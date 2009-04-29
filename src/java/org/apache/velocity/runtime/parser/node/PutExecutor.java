@@ -20,7 +20,7 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import java.lang.reflect.InvocationTargetException;
-
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.util.introspection.Introspector;
 
@@ -34,7 +34,8 @@ import org.apache.velocity.util.introspection.Introspector;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: PutExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: PutExecutor.java 687177 2008-08-19 22:00:32Z nbubna $
+ * @since 1.5
  */
 public class PutExecutor extends SetExecutor
 {
@@ -96,7 +97,9 @@ public class PutExecutor extends SetExecutor
         }
         catch(Exception e)
         {
-            log.error("While looking for put('" + params[0] + "') method:", e);
+            String msg = "Exception while looking for put('" + params[0] + "') method";
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 

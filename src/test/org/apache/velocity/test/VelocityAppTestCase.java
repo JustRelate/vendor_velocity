@@ -26,14 +26,14 @@ import junit.framework.TestSuite;
 
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
-import org.apache.velocity.runtime.log.NullLogChute;
+import org.apache.velocity.test.misc.TestLogChute;
 
 /**
  * This class is intended to test the app.Velocity.java class.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
- * @version $Id: VelocityAppTestCase.java 477002 2006-11-20 01:07:43Z henning $
+ * @version $Id: VelocityAppTestCase.java 704299 2008-10-14 03:13:16Z nbubna $
  */
 public class VelocityAppTestCase extends BaseTestCase implements TemplateTestBase
 {
@@ -53,7 +53,7 @@ public class VelocityAppTestCase extends BaseTestCase implements TemplateTestBas
                 Velocity.FILE_RESOURCE_LOADER_PATH, FILE_RESOURCE_LOADER_PATH);
 
         Velocity.setProperty(
-                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
+                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, TestLogChute.class.getName());
 
         Velocity.init();
     }

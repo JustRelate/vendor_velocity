@@ -20,7 +20,7 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import java.util.Map;
-
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.log.Log;
 
 /**
@@ -28,7 +28,8 @@ import org.apache.velocity.runtime.log.Log;
  * use Reflection but a cast to access the getter. 
  *
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: MapGetExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: MapGetExecutor.java 687177 2008-08-19 22:00:32Z nbubna $
+ * @since 1.5
  */
 public class MapGetExecutor
         extends AbstractExecutor 
@@ -65,7 +66,9 @@ public class MapGetExecutor
                 }
                 catch(Exception e)
                 {
-                    log.error("While looking for get('" + property + "') method:", e);
+                    String msg = "Exception while looking for get('" + property + "') method";
+                    log.error(msg, e);
+                    throw new VelocityException(msg, e);
                 }
                 break;
             }

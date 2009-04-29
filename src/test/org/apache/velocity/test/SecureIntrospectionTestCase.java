@@ -41,7 +41,7 @@ import org.apache.velocity.util.introspection.SecureUberspector;
  * Checks that the secure introspector is working properly.
  *
  * @author <a href="Will Glass-Husain">wglass@forio.com</a>
- * @version $Id: SecureIntrospectionTestCase.java 509906 2007-02-21 06:11:05Z wglass $
+ * @version $Id: SecureIntrospectionTestCase.java 509094 2007-02-19 05:17:09Z wglass $
  */
 public class SecureIntrospectionTestCase extends BaseTestCase
 {

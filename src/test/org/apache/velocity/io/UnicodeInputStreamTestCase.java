@@ -34,7 +34,7 @@ import org.apache.commons.lang.ArrayUtils;
  * Test the UnicodeInputStream.
  *
  * @author  $author$
- * @version  $Revision: 500889 $, $Date: 2007-01-28 13:30:04 -0800 (Sun, 28 Jan 2007) $
+ * @version  $Revision: 501574 $, $Date: 2007-01-30 22:32:26 +0100 (mar, 30 jan 2007) $
  */
 public class UnicodeInputStreamTestCase
     extends TestCase

@@ -19,16 +19,14 @@ package org.apache.velocity.runtime.parser.node;
  * under the License.    
  */
 
-import java.io.Writer;
 import java.io.IOException;
+import java.io.Writer;
 
 import org.apache.velocity.context.InternalContextAdapter;
-import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
-
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.runtime.parser.Parser;
 
 /**
  * This class is responsible for handling the #stop directive
@@ -37,7 +35,8 @@ import org.apache.velocity.exception.ResourceNotFoundException;
  * what controls the generation of this class.
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
- * @version $Id: ASTStop.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ASTStop.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public class ASTStop extends SimpleNode
 {
@@ -59,7 +58,7 @@ public class ASTStop extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {

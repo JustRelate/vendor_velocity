@@ -23,21 +23,20 @@ import java.io.IOException;
 import java.io.Writer;
 import java.util.Iterator;
 
-import org.apache.velocity.app.event.EventCartridge;
-import org.apache.velocity.context.Context;
+import org.apache.velocity.context.ChainedInternalContextAdapter;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.RuntimeServices;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.node.ASTReference;
 import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
-import org.apache.velocity.runtime.resource.Resource;
 import org.apache.velocity.util.introspection.Info;
-import org.apache.velocity.util.introspection.IntrospectionCacheData;
 
 /**
  * Foreach directive used for moving through arrays,
@@ -46,7 +45,7 @@ import org.apache.velocity.util.introspection.IntrospectionCacheData;
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author Daniel Rall
- * @version $Id: Foreach.java 479060 2006-11-25 00:30:19Z henning $
+ * @version $Id: Foreach.java 730367 2008-12-31 10:29:21Z byron $
  */
 public class Foreach extends Directive
 {
@@ -54,10 +53,10 @@ public class Foreach extends Directive
      * A special context to use when the foreach iterator returns a null.  This
      * is required since the standard context may not support nulls.
      * All puts and gets are passed through, except for the foreach iterator key.
+     * @since 1.5
      */
-    protected static class NullHolderContext implements InternalContextAdapter
+    protected static class NullHolderContext extends ChainedInternalContextAdapter
     {
-        private InternalContextAdapter  innerContext = null;
         private String   loopVariableKey = "";
         private boolean  active = true;
 
@@ -68,7 +67,7 @@ public class Foreach extends Directive
          */
         private NullHolderContext( String key, InternalContextAdapter context )
         {
-           innerContext = context;
+           super(context);
            if( key != null )
                loopVariableKey = key;
         }
@@ -82,7 +81,7 @@ public class Foreach extends Directive
         {
             return ( active && loopVariableKey.equals(key) )
                 ? null
-                : innerContext.get(key);
+                : super.get(key);
         }
 
         /**
@@ -95,7 +94,7 @@ public class Foreach extends Directive
                 active = true;
             }
 
-            return innerContext.put( key, value );
+            return super.put( key, value );
         }
 
         /**
@@ -112,23 +111,6 @@ public class Foreach extends Directive
             return put(key, value);
         }
 
-       /**
-         * Does the context contain the key
-         * @see org.apache.velocity.context.InternalContextAdapter#containsKey(java.lang.Object key)
-         */
-        public boolean containsKey( Object key )
-        {
-            return innerContext.containsKey(key);
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getKeys()
-         */
-        public Object[] getKeys()
-        {
-           return innerContext.getKeys();
-        }
-
         /**
          * Remove an object from the context
          * @see org.apache.velocity.context.InternalContextAdapter#remove(java.lang.Object key)
@@ -139,123 +121,8 @@ public class Foreach extends Directive
            {
              active = false;
            }
-           return innerContext.remove(key);
+           return super.remove(key);
         }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#pushCurrentTemplateName(java.lang.String s)
-         */
-        public void pushCurrentTemplateName(String s)
-        {
-            innerContext.pushCurrentTemplateName(s);
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#popCurrentTemplateName()
-         */
-        public void popCurrentTemplateName()
-        {
-            innerContext.popCurrentTemplateName();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getCurrentTemplateName()
-         */
-        public String getCurrentTemplateName()
-        {
-            return innerContext.getCurrentTemplateName();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getTemplateNameStack()
-         */
-        public Object[] getTemplateNameStack()
-        {
-            return innerContext.getTemplateNameStack();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#icacheGet(java.lang.Object key)
-         */
-        public IntrospectionCacheData icacheGet(Object key)
-        {
-            return innerContext.icacheGet(key);
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#icachePut(java.lang.Object key, org.apache.velocity.util.introspection.IntrospectionCacheData o)
-         */
-        public void icachePut(Object key, IntrospectionCacheData o)
-        {
-            innerContext.icachePut(key,o);
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#setCurrentResource(org.apache.velocity.runtime.resource.Resource r)
-         */
-        public void setCurrentResource( Resource r )
-        {
-            innerContext.setCurrentResource(r);
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getCurrentResource()
-         */
-        public Resource getCurrentResource()
-        {
-            return innerContext.getCurrentResource();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getBaseContext()
-         */
-        public InternalContextAdapter getBaseContext()
-        {
-            return innerContext.getBaseContext();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getInternalUserContext()
-         */
-        public Context getInternalUserContext()
-        {
-            return innerContext.getInternalUserContext();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#attachEventCartridge(org.apache.velocity.app.event.EventCartridge ec)
-         */
-        public EventCartridge attachEventCartridge(EventCartridge ec)
-        {
-            EventCartridge cartridge = innerContext.attachEventCartridge( ec );
-
-            return cartridge;
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getEventCartridge()
-         */
-        public EventCartridge getEventCartridge()
-        {
-            return innerContext.getEventCartridge();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#getAllowRendering()
-         */
-        public boolean getAllowRendering()
-        {
-            return innerContext.getAllowRendering();
-        }
-
-        /**
-         * @see org.apache.velocity.context.InternalContextAdapter#setAllowRendering(boolean v)
-         */
-        public void setAllowRendering(boolean v)
-        {
-            innerContext.setAllowRendering(v);
-        }
-
     }
 
     /**
@@ -284,6 +151,13 @@ public class Foreach extends Directive
     private String counterName;
 
     /**
+     * The name of the variable to use when placing
+     * iterator hasNext() value into the context.Right
+     * now the defailt is $velocityHasNext
+     */
+    private String hasNextName;
+
+    /**
      * What value to start the loop counter at.
      */
     private int counterInitialValue;
@@ -292,6 +166,11 @@ public class Foreach extends Directive
      * The maximum number of times we're allowed to loop.
      */
     private int maxNbrLoops;
+
+    /**
+     * Whether or not to throw an Exception if the iterator is null.
+     */
+    private boolean skipInvalidIterator;
 
     /**
      * The reference name used to access each
@@ -324,6 +203,7 @@ public class Foreach extends Directive
         super.init(rs, context, node);
 
         counterName = rsvc.getString(RuntimeConstants.COUNTER_NAME);
+        hasNextName = rsvc.getString(RuntimeConstants.HAS_NEXT_NAME);
         counterInitialValue = rsvc.getInt(RuntimeConstants.COUNTER_INITIAL_VALUE);
         maxNbrLoops = rsvc.getInt(RuntimeConstants.MAX_NUMBER_LOOPS,
                                   Integer.MAX_VALUE);
@@ -331,12 +211,20 @@ public class Foreach extends Directive
         {
             maxNbrLoops = Integer.MAX_VALUE;
         }
-
+        skipInvalidIterator =
+            rsvc.getBoolean(RuntimeConstants.SKIP_INVALID_ITERATOR, true);
+        
+        if (rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false))
+        {
+          // If we are in strict mode then the default for skipInvalidItarator
+          // is true.  However, if the property is explicitly set, then honor the setting.
+          skipInvalidIterator = rsvc.getBoolean(RuntimeConstants.SKIP_INVALID_ITERATOR, false);
+        }
+                
         /*
          *  this is really the only thing we can do here as everything
          *  else is context sensitive
          */
-
         SimpleNode sn = (SimpleNode) node.jjtGetChild(0);
 
         if (sn instanceof ASTReference)
@@ -356,8 +244,19 @@ public class Foreach extends Directive
          * make an uberinfo - saves new's later on
          */
 
-        uberInfo = new Info(context.getCurrentTemplateName(),
+        uberInfo = new Info(this.getTemplateName(),
                 getLine(),getColumn());
+    }
+
+    /**
+     * Extension hook to allow subclasses to control whether loop vars
+     * are set locally or not. So, those in favor of VELOCITY-285, can
+     * make that happen easily by overriding this and having it use
+     * context.localPut(k,v). See VELOCITY-630 for more on this.
+     */
+    protected void put(InternalContextAdapter context, String key, Object value)
+    {
+        context.put(key, value);
     }
 
     /**
@@ -400,12 +299,27 @@ public class Foreach extends Directive
         }
         catch(Exception ee)
         {
-            rsvc.getLog().error("Error getting iterator for #foreach", ee);
+            String msg = "Error getting iterator for #foreach at "+uberInfo;
+            rsvc.getLog().error(msg, ee);
+            throw new VelocityException(msg, ee);
         }
 
         if (i == null)
         {
-            return false;
+            if (skipInvalidIterator)
+            {
+                return false;
+            }
+            else
+            {
+                Node pnode = node.jjtGetChild(2);
+                String msg = "#foreach parameter " + pnode.literal() + " at "
+                    + Log.formatFileString(pnode)
+                    + " is of type " + listObject.getClass().getName()
+                    + " and is either of wrong type or cannot be iterated.";
+                rsvc.getLog().error(msg);
+                throw new VelocityException(msg);
+            }
         }
 
         int counter = counterInitialValue;
@@ -416,7 +330,8 @@ public class Foreach extends Directive
          */
         Object o = context.get(elementKey);
         Object savedCounter = context.get(counterName);
-
+        Object nextFlag = context.get(hasNextName);
+        
         /*
          * Instantiate the null holder context if a null value
          * is returned by the foreach iterator.  Only one instance is
@@ -426,27 +341,37 @@ public class Foreach extends Directive
 
         while (!maxNbrLoopsExceeded && i.hasNext())
         {
-            // TODO: JDK 1.4+ -> valueOf()
-            context.localPut(counterName , new Integer(counter));
+            // TODO: JDK 1.5+ -> Integer.valueOf()
+            put(context, counterName , new Integer(counter));
             Object value = i.next();
-            context.localPut(elementKey, value);
+            put(context, hasNextName, Boolean.valueOf(i.hasNext()));
+            put(context, elementKey, value);
 
-            /*
-             * If the value is null, use the special null holder context
-             */
-            if( value == null )
+            try
             {
-                if( nullHolderContext == null )
+                /*
+                 * If the value is null, use the special null holder context
+                 */
+                if (value == null)
                 {
-                    // lazy instantiation
-                    nullHolderContext = new NullHolderContext(elementKey, context);
+                    if (nullHolderContext == null)
+                    {
+                        // lazy instantiation
+                        nullHolderContext = new NullHolderContext(elementKey, context);
+                    }
+                    node.jjtGetChild(3).render(nullHolderContext, writer);
                 }
-                node.jjtGetChild(3).render(nullHolderContext, writer);
+                else
+                {
+                    node.jjtGetChild(3).render(context, writer);
+                }
             }
-            else
+            catch (Break.BreakException ex)
             {
-                node.jjtGetChild(3).render(context, writer);
+                // encountered #break directive inside #foreach loop
+                break;
             }
+            
             counter++;
 
             // Determine whether we're allowed to continue looping.
@@ -481,6 +406,18 @@ public class Foreach extends Directive
         else
         {
             context.remove(elementKey);
+        }
+
+        /*
+         * restores the "hasNext" boolean flag if it exists
+         */         
+        if( nextFlag != null )
+        {
+            context.put(hasNextName, nextFlag);
+        }
+        else
+        {
+            context.remove(hasNextName);
         }
 
         return true;

@@ -39,7 +39,8 @@ import org.apache.velocity.runtime.RuntimeServices;
  * @author <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:nbubna@apache.org">Nathan Bubna</a>
- * @version $Id: AvalonLogChute.java 463300 2006-10-12 16:15:29Z henning $
+ * @version $Id: AvalonLogChute.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public class AvalonLogChute implements LogChute
 {
@@ -100,7 +101,7 @@ public class AvalonLogChute implements LogChute
             if (rsvc != null)
             {
                 format = rsvc.getString(AVALON_LOGGER_FORMAT, "%{time} %{message}\\n%{throwable}");
-                level = (Priority) logLevels.get(rsvc.getString(AVALON_LOGGER_LEVEL, "debug"));
+                level = (Priority) logLevels.get(rsvc.getString(AVALON_LOGGER_LEVEL, "warn"));
             }
 
             VelocityFormatter vf = new VelocityFormatter(format);
@@ -114,7 +115,7 @@ public class AvalonLogChute implements LogChute
         }
         catch (IOException ioe)
         {
-            rsvc.getLog().warn("Unable to create log file for AvalonLogChute", ioe);
+            rsvc.getLog().error("Unable to create log file for AvalonLogChute", ioe);
             throw new Exception("Error configuring AvalonLogChute : " + ioe);
         }
     }
@@ -131,7 +132,7 @@ public class AvalonLogChute implements LogChute
         logger = Hierarchy.getDefaultHierarchy().getLoggerFor(rsvc.toString());
         initTarget(file, null);
         // nag the theoretical user
-        log(WARN_ID, "You shouldn't be using the init(String file) method!");
+        log(DEBUG_ID, "You shouldn't be using the init(String file) method!");
     }
 
     /**

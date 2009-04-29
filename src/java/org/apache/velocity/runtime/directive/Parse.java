@@ -21,6 +21,8 @@ package org.apache.velocity.runtime.directive;
 
 import java.io.IOException;
 import java.io.Writer;
+import java.util.List;
+import java.util.ArrayList;
 
 import org.apache.velocity.Template;
 import org.apache.velocity.app.event.EventHandlerUtil;
@@ -28,7 +30,11 @@ import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.exception.VelocityException;
+import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.RuntimeServices;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
 
@@ -46,17 +52,19 @@ import org.apache.velocity.runtime.parser.node.SimpleNode;
  *    content.
  *
  *  2) There is a limited parse depth.  It is set as a property
- *    "parse_directive.maxdepth = 10"  for example.  There is a 20 iteration
- *    safety in the event that the parameter isn't set.
+ *    "directive.parse.max.depth = 10" by default.  This 10 deep
+ *    limit is a safety feature to prevent infinite loops.
  * </pre>
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:Christoph.Reck@dlr.de">Christoph Reck</a>
- * @version $Id: Parse.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: Parse.java 724825 2008-12-09 18:56:06Z nbubna $
  */
 public class Parse extends InputBase
 {
+    private int maxDepth;
+
     /**
      * Return name of this directive.
      * @return The name of this directive.
@@ -73,6 +81,21 @@ public class Parse extends InputBase
     public int getType()
     {
         return LINE;
+    }
+
+    /**
+     * Init's the #parse directive.
+     * @param rs
+     * @param context
+     * @param node
+     * @throws TemplateInitException
+     */
+    public void init(RuntimeServices rs, InternalContextAdapter context, Node node)
+        throws TemplateInitException
+    {
+        super.init(rs, context, node);
+
+        this.maxDepth = rsvc.getInt(RuntimeConstants.PARSE_DIRECTIVE_MAXDEPTH, 10);
     }
 
     /**
@@ -142,27 +165,25 @@ public class Parse extends InputBase
         if (arg == null)
             blockinput = true;
 
-        /*
-         *   see if we have exceeded the configured depth.
-         *   If it isn't configured, put a stop at 20 just in case.
-         */
 
-        Object[] templateStack = context.getTemplateNameStack();
-
-        if ( templateStack.length >=
-                rsvc.getInt(RuntimeConstants.PARSE_DIRECTIVE_MAXDEPTH, 20) )
+        if (maxDepth > 0)
         {
-            StringBuffer path = new StringBuffer();
-
-            for( int i = 0; i < templateStack.length; ++i)
+            /* 
+             * see if we have exceeded the configured depth.
+             */
+            Object[] templateStack = context.getTemplateNameStack();
+            if (templateStack.length >= maxDepth)
             {
-                path.append( " > " + templateStack[i] );
+                StringBuffer path = new StringBuffer();
+                for( int i = 0; i < templateStack.length; ++i)
+                {
+                    path.append( " > " + templateStack[i] );
+                }
+                rsvc.getLog().error("Max recursion depth reached (" +
+                                    templateStack.length + ')' + " File stack:" +
+                                    path);
+                return false;
             }
-
-            rsvc.getLog().error("Max recursion depth reached (" +
-                                templateStack.length + ')' + " File stack:" +
-                                path);
-            return false;
         }
 
         /*
@@ -182,9 +203,7 @@ public class Parse extends InputBase
              * the arg wasn't found.  Note it and throw
              */
             rsvc.getLog().error("#parse(): cannot find template '" + arg +
-                                "', called from template " +
-                                context.getCurrentTemplateName() + " at (" +
-                                getLine() + ", " + getColumn() + ")" );
+                                "', called at " + Log.formatFileString(this));
             throw rnfe;
         }
         catch ( ParseErrorException pee )
@@ -193,12 +212,8 @@ public class Parse extends InputBase
              * the arg was found, but didn't parse - syntax error
              *  note it and throw
              */
-
             rsvc.getLog().error("#parse(): syntax error in #parse()-ed template '"
-                                + arg + "', called from template " +
-                                context.getCurrentTemplateName() + " at (" +
-                                getLine() + ", " + getColumn() + ")" );
-
+                                + arg + "', called at " + Log.formatFileString(this));
             throw pee;
         }
         /**
@@ -206,13 +221,34 @@ public class Parse extends InputBase
          */
         catch( RuntimeException e )
         {
+            rsvc.getLog().error("Exception rendering #parse(" + arg + ") at " +
+                                Log.formatFileString(this));
             throw e;
         }
         catch ( Exception e)
         {
-            rsvc.getLog().error("#parse() : arg = " + arg + '.', e);
-            return false;
+            String msg = "Exception rendering #parse(" + arg + ") at " +
+                         Log.formatFileString(this);
+            rsvc.getLog().error(msg, e);
+            throw new VelocityException(msg, e);
         }
+
+        /**
+         * Add the template name to the macro libraries list
+         */
+        List macroLibraries = context.getMacroLibraries();
+
+        /**
+         * if macroLibraries are not set create a new one
+         */
+        if (macroLibraries == null)
+        {
+            macroLibraries = new ArrayList();
+        }
+
+        context.setMacroLibraries(macroLibraries);
+
+        macroLibraries.add(arg);
 
         /*
          *  and render it
@@ -224,28 +260,24 @@ public class Parse extends InputBase
                 ((SimpleNode) t.getData()).render( context, writer );
             }
         }
-        
-        /*
-         *  if it's a MIE, it came from the render.... throw it...
-         */
-        catch( MethodInvocationException e )
-        {
-            throw e;
-        }
-        
         /**
          * pass through application level runtime exceptions
          */
         catch( RuntimeException e )
         {
+            /**
+             * Log #parse errors so the user can track which file called which.
+             */
+            rsvc.getLog().error("Exception rendering #parse(" + arg + ") at " +
+                                Log.formatFileString(this));
             throw e;
         }
-
-
         catch ( Exception e )
         {
-            rsvc.getLog().error("Exception rendering #parse(" + arg + ')', e);
-            return false;
+            String msg = "Exception rendering #parse(" + arg + ") at " +
+                         Log.formatFileString(this);
+            rsvc.getLog().error(msg, e);
+            throw new VelocityException(msg, e);
         }
         finally
         {

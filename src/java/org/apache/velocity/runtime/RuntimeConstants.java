@@ -26,7 +26,7 @@ package org.apache.velocity.runtime;
  * @author  <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
  * @author  <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author  <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version  $Id: RuntimeConstants.java 471372 2006-11-05 06:02:20Z wglass $
+ * @version  $Id: RuntimeConstants.java 702218 2008-10-06 18:15:18Z nbubna $
  */
 public interface RuntimeConstants
 {
@@ -53,6 +53,11 @@ public interface RuntimeConstants
     /** class of log system to use. */
     String RUNTIME_LOG_LOGSYSTEM_CLASS = "runtime.log.logsystem.class";
 
+    /**
+     * Properties referenced in the template are required to exist the object
+     */
+    String RUNTIME_REFERENCES_STRICT = "runtime.references.strict";
+    
     /**
      * @deprecated  This appears to have always been meaningless.
      */
@@ -114,11 +119,23 @@ public interface RuntimeConstants
     /** Counter reference name in #foreach directives. */
     String COUNTER_NAME = "directive.foreach.counter.name";
 
+    /**
+     * Iterator.hasNext() reference name in #foreach directives.
+     * @since 1.6
+     */
+    String HAS_NEXT_NAME = "directive.foreach.iterator.name";
+
     /** Initial counter value in #foreach directives. */
     String COUNTER_INITIAL_VALUE = "directive.foreach.counter.initial.value";
 
     /** Maximum allowed number of loops. */
     String MAX_NUMBER_LOOPS = "directive.foreach.maxloops";
+
+    /**
+     * Whether to throw an exception or just skip bad iterables. Default is true.
+     * @since 1.6
+     */
+    String SKIP_INVALID_ITERATOR = "directive.foreach.skip.invalid";
 
     /** if set to true then allows #set to accept null values in the right hand side. */
     String SET_NULL_ALLOWED = "directive.set.null.allowed";
@@ -137,6 +154,15 @@ public interface RuntimeConstants
 
     /** Maximum recursion depth allowed for the #parse directive. */
     String PARSE_DIRECTIVE_MAXDEPTH = "directive.parse.max.depth";
+
+    /** Maximum recursion depth allowed for the #define directive. */
+    String DEFINE_DIRECTIVE_MAXDEPTH = "directive.define.max.depth";
+
+    /**
+     * class to use for local context with #evaluate()
+     * @since 1.6
+     */
+    String EVALUATE_CONTEXT_CLASS = "directive.evaluate.context.class";
 
 
     /*
@@ -248,6 +274,12 @@ public interface RuntimeConstants
 
     /** if true, throw an exception for wrong number of arguments **/
     String VM_ARGUMENTS_STRICT = "velocimacro.arguments.strict";
+
+    /**
+     * Specify the maximum depth for macro calls
+     * @since 1.6
+     */
+    String VM_MAX_DEPTH = "velocimacro.max.depth";
     
     /*
      * ----------------------------------------------------------------------
@@ -267,7 +299,7 @@ public interface RuntimeConstants
     /** Default Encoding is ISO-8859-1. */
     String ENCODING_DEFAULT = "ISO-8859-1";
 
-    /** key name for uberspector. */
+    /** key name for uberspector. Multiple classnames can be specified,in which case uberspectors will be chained. */
     String UBERSPECT_CLASSNAME = "runtime.introspector.uberspect";
 
     /** A comma separated list of packages to restrict access to in the SecureIntrospector. */
@@ -275,6 +307,9 @@ public interface RuntimeConstants
 
     /** A comma separated list of classes to restrict access to in the SecureIntrospector. */
     String INTROSPECTOR_RESTRICT_CLASSES = "introspector.restrict.classes";
+
+    /** Switch for ignoring nulls in math equations vs throwing exceptions. */
+    String STRICT_MATH = "runtime.strict.math";
 
     /**
      * The <code>parser.pool.class</code> property specifies the name of the {@link org.apache.velocity.util.SimplePool}
@@ -286,8 +321,7 @@ public interface RuntimeConstants
      * @see  #NUMBER_OF_PARSERS
      */
     String PARSER_POOL_SIZE = "parser.pool.size";
-
-
+    
     /*
      * ----------------------------------------------------------------------
      * These constants are used internally by the Velocity runtime i.e.
@@ -307,6 +341,9 @@ public interface RuntimeConstants
      * constant.
      */
     int NUMBER_OF_PARSERS = 20;
+
+    
+
 
 
 }

@@ -31,12 +31,13 @@ import java.util.Hashtable;
 import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.exception.VelocityException;
 
 /**
  * A small wrapper around a Jar
  *
  * @author <a href="mailto:daveb@miceda-data.com">Dave Bryson</a>
- * @version $Id: JarHolder.java 471259 2006-11-04 20:26:57Z henning $
+ * @version $Id: JarHolder.java 687177 2008-08-19 22:00:32Z nbubna $
  */
 public class JarHolder
 {
@@ -84,8 +85,10 @@ public class JarHolder
         }
         catch (IOException ioe)
         {
-            log.error("JarHolder: error establishing connection to JAR at \""
-                      + urlpath + "\"", ioe);
+            String msg = "JarHolder: error establishing connection to JAR at \""
+                         + urlpath + "\"";
+            log.error(msg, ioe);
+            throw new VelocityException(msg, ioe);
         }
     }
 
@@ -100,7 +103,9 @@ public class JarHolder
         }
         catch ( Exception e )
         {
-            log.error("JarHolder: error closing the JAR file", e);
+            String msg = "JarHolder: error closing the JAR file";
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
         theJar = null;
         conn = null;

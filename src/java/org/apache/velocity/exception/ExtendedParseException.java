@@ -26,7 +26,8 @@ package org.apache.velocity.exception;
  * to deal with this information.
  *
  * @author <a href="hps@intermeta.de">Henning P. Schmiedehausen</a>
- * @version $Id: ExtendedParseException.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ExtendedParseException.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public interface ExtendedParseException
 {

@@ -31,14 +31,14 @@ import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.runtime.RuntimeSingleton;
-import org.apache.velocity.runtime.log.NullLogChute;
+import org.apache.velocity.test.misc.TestLogChute;
 
 /**
  * Load templates from the Classpath.
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:daveb@miceda-data.com">Dave Bryson</a>
- * @version $Id: ClasspathResourceTestCase.java 477002 2006-11-20 01:07:43Z henning $
+ * @version $Id: ClasspathResourceTestCase.java 704299 2008-10-14 03:13:16Z nbubna $
  */
 public class ClasspathResourceTestCase extends BaseTestCase
 {
@@ -99,7 +99,7 @@ public class ClasspathResourceTestCase extends BaseTestCase
                 "2");
 
         Velocity.setProperty(
-                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
+                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, TestLogChute.class.getName());
 
         Velocity.init();
     }

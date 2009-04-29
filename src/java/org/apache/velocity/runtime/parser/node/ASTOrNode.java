@@ -19,11 +19,9 @@ package org.apache.velocity.runtime.parser.node;
  * under the License.    
  */
 
-import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.context.InternalContextAdapter;
-
 import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.runtime.parser.Parser;
 
 /**
  * Please look at the Parser.jjt file which is
@@ -31,7 +29,7 @@ import org.apache.velocity.exception.MethodInvocationException;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTOrNode.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ASTOrNode.java 685370 2008-08-12 23:36:35Z nbubna $
 */
 public class ASTOrNode extends SimpleNode
 {
@@ -53,7 +51,7 @@ public class ASTOrNode extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -72,7 +70,8 @@ public class ASTOrNode extends SimpleNode
         throws MethodInvocationException
     {
         // TODO: JDK 1.4+ -> valueOf()
-        return new Boolean(evaluate(context));
+        // return new Boolean(evaluate(context));
+        return evaluate(context) ? Boolean.TRUE : Boolean.FALSE;
     }
 
     /**

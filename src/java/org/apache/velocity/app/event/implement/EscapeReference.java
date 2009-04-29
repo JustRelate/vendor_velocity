@@ -52,7 +52,8 @@ import org.apache.velocity.util.StringUtils;
  * <a href="http://jakarta.apache.org/oro/api/org/apache/oro/text/perl/package-summary.html">http://jakarta.apache.org/oro/api/org/apache/oro/text/perl/package-summary.html</a>.
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain </a>
- * @version $Id: EscapeReference.java 470256 2006-11-02 07:20:36Z wglass $
+ * @version $Id: EscapeReference.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public abstract class EscapeReference implements ReferenceInsertionEventHandler,RuntimeServicesAware {
 

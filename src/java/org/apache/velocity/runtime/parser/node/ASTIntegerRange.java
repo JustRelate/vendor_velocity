@@ -24,8 +24,8 @@ import java.util.List;
 
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 
 /**
  * handles the range 'operator'  [ n .. m ]
@@ -55,7 +55,7 @@ public class ASTIntegerRange extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -89,23 +89,20 @@ public class ASTIntegerRange extends SimpleNode
             log.error((left == null ? "Left" : "Right")
                            + " side of range operator [n..m] has null value."
                            + " Operation not possible. "
-                           +  context.getCurrentTemplateName() + " [line " + getLine()
-                           + ", column " + getColumn() + "]");
+                           + Log.formatFileString(this));
             return null;
         }
 
         /*
-         *  if not an Integer, not much we can do either
+         *  if not a Number, not much we can do either
          */
 
-        if ( !( left instanceof Integer )  || !( right instanceof Integer ))
+        if ( !( left instanceof Number )  || !( right instanceof Number ))
         {
-            log.error((!(left instanceof Integer) ? "Left" : "Right")
+            log.error((!(left instanceof Number) ? "Left" : "Right")
                            + " side of range operator is not a valid type. "
-                           + "Currently only integers (1,2,3...) and Integer type is supported. "
-                           + context.getCurrentTemplateName() + " [line " + getLine()
-                           + ", column " + getColumn() + "]");
-
+                           + "Currently only integers (1,2,3...) and the Number type are supported. "
+                           + Log.formatFileString(this));
             return null;
         }
 
@@ -114,8 +111,8 @@ public class ASTIntegerRange extends SimpleNode
          *  get the two integer values of the ends of the range
          */
 
-        int l = ( (Integer) left ).intValue() ;
-        int r = (  (Integer) right ).intValue();
+        int l = ((Number) left).intValue() ;
+        int r = ((Number) right).intValue();
 
         /*
          *  find out how many there are

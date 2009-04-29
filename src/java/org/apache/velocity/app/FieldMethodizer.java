@@ -57,15 +57,12 @@ import org.apache.velocity.util.ClassUtils;
  *  to handle them by explicitly placing them into the context.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: FieldMethodizer.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: FieldMethodizer.java 652755 2008-05-02 04:00:58Z nbubna $
  */
 public class FieldMethodizer
 {
     /** Hold the field objects by field name */
     private HashMap fieldHash = new HashMap();
-
-    /** Hold the class objects by field name */
-    private HashMap classHash = new HashMap();
 
     /**
      * Allow object to be initialized without any data. You would use
@@ -154,7 +151,7 @@ public class FieldMethodizer
             Field f = (Field) fieldHash.get( fieldName );
             if (f != null)
             {
-                value = f.get(classHash.get(fieldName) );
+                value = f.get(null);
             }
         }
         catch( IllegalAccessException e )
@@ -181,7 +178,6 @@ public class FieldMethodizer
             if ( Modifier.isStatic(mod) && Modifier.isPublic(mod) )
             {
                 fieldHash.put(fields[i].getName(), fields[i]);
-                classHash.put(fields[i].getName(), clas);
             }
         }
     }

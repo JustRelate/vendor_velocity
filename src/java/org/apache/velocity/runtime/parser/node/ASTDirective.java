@@ -29,9 +29,9 @@ import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.directive.Directive;
+import org.apache.velocity.runtime.directive.RuntimeMacro;
 import org.apache.velocity.runtime.parser.ParseException;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.util.ExceptionUtils;
 
 /**
@@ -46,13 +46,14 @@ import org.apache.velocity.util.ExceptionUtils;
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:kav@kav.dk">Kasper Nielsen</a>
- * @version $Id: ASTDirective.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTDirective.java 724825 2008-12-09 18:56:06Z nbubna $
  */
 public class ASTDirective extends SimpleNode
 {
     private Directive directive = null;
     private String directiveName = "";
     private boolean isDirective;
+    private boolean isInitialized;
 
     /**
      * @param id
@@ -73,7 +74,7 @@ public class ASTDirective extends SimpleNode
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -83,75 +84,79 @@ public class ASTDirective extends SimpleNode
     /**
      * @see org.apache.velocity.runtime.parser.node.SimpleNode#init(org.apache.velocity.context.InternalContextAdapter, java.lang.Object)
      */
-    public Object init( InternalContextAdapter context, Object data)
+    public synchronized Object init( InternalContextAdapter context, Object data)
     throws TemplateInitException
     {
-        super.init( context, data );
-
-        /*
-         *  only do things that are not context dependant
-         */
-
-        if (parser.isDirective( directiveName ))
+        /** method is synchronized to avoid concurrent directive initialization **/
+        
+        if (!isInitialized)
         {
-            isDirective = true;
+            super.init( context, data );
 
-            try
-            {
-                directive = (Directive) parser.getDirective( directiveName )
-                    .getClass().newInstance();
-            } 
-            catch (InstantiationException e)
-            {
-                throw ExceptionUtils.createRuntimeException("Couldn't initialize " +
-                        "directive of class " +
-                        parser.getDirective(directiveName).getClass().getName(),
-                        e);
-            }
-            catch (IllegalAccessException e)
-            {
-                throw ExceptionUtils.createRuntimeException("Couldn't initialize " +
-                        "directive of class " +
-                        parser.getDirective(directiveName).getClass().getName(),
-                        e);
-            }
-                
-            directive.init(rsvc, context,this);
-
-            directive.setLocation( getLine(), getColumn() );
-        }
-        else if (rsvc.isVelocimacro( directiveName, context.getCurrentTemplateName()  ))
-        {
             /*
-             *  we seem to be a Velocimacro.
+             *  only do things that are not context dependent
              */
-
-            isDirective = true;
-            directive = rsvc.getVelocimacro( directiveName,  context.getCurrentTemplateName());
-
-            try 
+    
+            if (parser.isDirective( directiveName ))
             {
-                directive.init( rsvc, context, this );
+                isDirective = true;
+    
+                try
+                {
+                    directive = (Directive) parser.getDirective( directiveName )
+                        .getClass().newInstance();
+                } 
+                catch (InstantiationException e)
+                {
+                    throw ExceptionUtils.createRuntimeException("Couldn't initialize " +
+                            "directive of class " +
+                            parser.getDirective(directiveName).getClass().getName(),
+                            e);
+                }
+                catch (IllegalAccessException e)
+                {
+                    throw ExceptionUtils.createRuntimeException("Couldn't initialize " +
+                            "directive of class " +
+                            parser.getDirective(directiveName).getClass().getName(),
+                            e);
+                }
+                        
+                directive.setLocation(getLine(), getColumn(), getTemplateName());
+                directive.init(rsvc, context,this);
+            }
+            else
+            {
+                /**
+                 * Create a new RuntimeMacro
+                 */
+                directive = new RuntimeMacro(directiveName, getTemplateName());
+                directive.setLocation(getLine(), getColumn(), getTemplateName());
+        
+                /**
+                 * Initialize it
+                 */
+                try
+                {
+                    directive.init( rsvc, context, this );
+                }
+    
+                /**
+                 * correct the line/column number if an exception is caught
+                 */
+                catch (TemplateInitException die)
+                {
+                    throw new TemplateInitException(die.getMessage(),
+                            (ParseException) die.getWrappedThrowable(),
+                            die.getTemplateName(),
+                            die.getColumnNumber() + getColumn(),
+                            die.getLineNumber() + getLine());
+                }
+                isDirective = true;
             }
             
-            /**
-             * correct the line/column number if an exception is caught
-             */
-            catch (TemplateInitException die)
-            {
-                throw new TemplateInitException(die.getMessage(),
-                        (ParseException) die.getWrappedThrowable(),
-                        die.getTemplateName(),
-                        die.getColumnNumber() + getColumn(),
-                        die.getLineNumber() + getLine());
-            }
-            directive.setLocation( getLine(), getColumn() );
+            isInitialized = true;
         }
-        else
-        {
-            isDirective = false;
-        }
-
+           
         return data;
     }
 
@@ -200,6 +205,9 @@ public class ASTDirective extends SimpleNode
         return directiveName;
     }
     
+    /**
+     * @since 1.5
+     */
     public String toString()
     {
         return new ToStringBuilder(this)
@@ -209,5 +217,6 @@ public class ASTDirective extends SimpleNode
     }
 
 }
+
 
 

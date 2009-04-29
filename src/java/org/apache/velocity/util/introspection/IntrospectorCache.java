@@ -23,7 +23,8 @@ package org.apache.velocity.util.introspection;
  * The introspector cache API definition.
  *
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: IntrospectorCache.java 476951 2006-11-19 22:22:43Z henning $
+ * @version $Id: IntrospectorCache.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public interface IntrospectorCache {
 
@@ -51,19 +52,5 @@ public interface IntrospectorCache {
      * @return A ClassMap object.
      */
     ClassMap put(Class c);
-
-    /**
-     * Register a Cache listener.
-     *
-     * @param listener A Cache listener object.
-     */
-    void addListener(IntrospectorCacheListener listener);
-
-    /**
-     * Remove a Cache listener.
-     *
-     * @param listener A Cache listener object.
-     */
-    void removeListener(IntrospectorCacheListener listener);
 
 }

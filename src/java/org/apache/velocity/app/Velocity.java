@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.util.Properties;
@@ -32,16 +31,13 @@ import java.util.Properties;
 import org.apache.commons.collections.ExtendedProperties;
 import org.apache.velocity.Template;
 import org.apache.velocity.context.Context;
-import org.apache.velocity.context.InternalContextAdapterImpl;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
-import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.RuntimeSingleton;
 import org.apache.velocity.runtime.log.Log;
-import org.apache.velocity.runtime.parser.ParseException;
-import org.apache.velocity.runtime.parser.node.SimpleNode;
 
 /**
  * This class provides  services to the application
@@ -67,7 +63,7 @@ import org.apache.velocity.runtime.parser.node.SimpleNode;
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:Christoph.Reck@dlr.de">Christoph Reck</a>
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: Velocity.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: Velocity.java 687177 2008-08-19 22:00:32Z nbubna $
  */
 public class Velocity implements RuntimeConstants
 {
@@ -185,14 +181,15 @@ public class Velocity implements RuntimeConstants
      * @throws ParseErrorException The template could not be parsed.
      * @throws MethodInvocationException A method on a context object could not be invoked.
      * @throws ResourceNotFoundException A referenced resource could not be loaded.
-     * @throws IOException While loading a reference, an I/O problem occured.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
      */
     public static  boolean evaluate( Context context,  Writer out,
                                      String logTag, String instring )
         throws ParseErrorException, MethodInvocationException,
             ResourceNotFoundException, IOException
     {
-        return evaluate( context, out, logTag, new BufferedReader( new StringReader( instring )) );
+        return RuntimeSingleton.getRuntimeServices()
+            .evaluate(context, out, logTag, instring);
     }
 
     /**
@@ -258,8 +255,8 @@ public class Velocity implements RuntimeConstants
      * @throws ParseErrorException The template could not be parsed.
      * @throws MethodInvocationException A method on a context object could not be invoked.
      * @throws ResourceNotFoundException A referenced resource could not be loaded.
-     * @throws IOException While loading a reference, an I/O problem occured.
-     *
+     * @throws IOException While reading from the reader or rendering to the writer,
+     *                     an I/O problem occured.
      *  @since Velocity v1.1
      */
     public static boolean evaluate( Context context, Writer writer,
@@ -267,158 +264,40 @@ public class Velocity implements RuntimeConstants
         throws ParseErrorException, MethodInvocationException,
             ResourceNotFoundException,IOException
     {
-        SimpleNode nodeTree = null;
-
-        try
-        {
-            nodeTree = RuntimeSingleton.parse( reader, logTag );
-        }
-        catch ( ParseException pex )
-        {
-            throw  new ParseErrorException( pex );
-        }
-        catch (TemplateInitException pex)
-        {
-            throw  new ParseErrorException( pex );
-        }
-
-        /*
-         * now we want to init and render
-         */
-
-        if (nodeTree != null)
-        {
-            InternalContextAdapterImpl ica =
-                new InternalContextAdapterImpl( context );
-
-            ica.pushCurrentTemplateName( logTag );
-
-            try
-            {
-                try
-                {
-                    nodeTree.init( ica, RuntimeSingleton.getRuntimeServices() );
-                }
-                catch (TemplateInitException pex)
-                {
-                    throw  new ParseErrorException( pex );
-                }
-                /**
-                 * pass through application level runtime exceptions
-                 */
-                catch( RuntimeException e )
-                {
-                    throw e;
-                }
-                catch( Exception e )
-                {
-                    getLog().error("Velocity.evaluate() : init exception for tag = "+logTag, e);
-                }
-
-                /*
-                 *  now render, and let any exceptions fly
-                 */
-
-                nodeTree.render( ica, writer );
-            }
-            finally
-            {
-                ica.popCurrentTemplateName();
-            }
-
-            return true;
-        }
-
-        return false;
+        return RuntimeSingleton.getRuntimeServices().evaluate(context, writer,
+                                                              logTag, reader);
     }
 
     /**
-     *  Invokes a currently registered Velocimacro with the parms provided
-     *  and places the rendered stream into the writer.
+     * Invokes a currently registered Velocimacro with the params provided
+     * and places the rendered stream into the writer.
+     * <br>
+     * Note : currently only accepts args to the VM if they are in the context.
      *
-     *  Note : currently only accepts args to the VM if they are in the context.
-     *
-     *  @param vmName name of Velocimacro to call
-     *  @param logTag string to be used for template name in case of error
-     *  @param params args used to invoke Velocimacro. In context key format :
-     *                  eg  "foo","bar" (rather than "$foo","$bar")
-     *  @param context Context object containing data/objects used for rendering.
-     *  @param writer  Writer for output stream
-     *  @return true if Velocimacro exists and successfully invoked, false otherwise.
+     * @param vmName name of Velocimacro to call
+     * @param logTag string to be used for template name in case of error. if null,
+     *               the vmName will be used
+     * @param params keys for args used to invoke Velocimacro, in java format
+     *               rather than VTL (eg  "foo" or "bar" rather than "$foo" or "$bar")
+     * @param context Context object containing data/objects used for rendering.
+     * @param writer  Writer for output stream
+     * @return true if Velocimacro exists and successfully invoked, false otherwise.
      */
     public static  boolean invokeVelocimacro( String vmName, String logTag,
                                               String params[], Context context,
                                               Writer writer )
     {
-        /*
-         *  check parms
-         */
-
-        if ( vmName == null ||  params == null ||  context == null
-             || writer == null || logTag == null)
-        {
-            getLog().error("Velocity.invokeVelocimacro() : invalid parameter");
-            return false;
-        }
-
-        /*
-         * does the VM exist?
-         */
-
-        if (!RuntimeSingleton.isVelocimacro( vmName, logTag ))
-        {
-            getLog().error("Velocity.invokeVelocimacro() : VM '"+ vmName
-                           + "' not registered.");
-            return false;
-        }
-
-        /*
-         *  now just create the VM call, and use evaluate
-         */
-
-        StringBuffer construct = new StringBuffer("#");
-
-        construct.append( vmName );
-        construct.append( "(" );
-
-        for( int i = 0; i < params.length; i++)
-        {
-            construct.append( " $" );
-            construct.append( params[i] );
-        }
-
-        construct.append(" )");
-
         try
         {
-            return evaluate(  context,  writer,
-                                         logTag, construct.toString() );
+            return RuntimeSingleton.getRuntimeServices()
+                .invokeVelocimacro(vmName, logTag, params, context, writer);
         }
-
-        catch(ParseErrorException pee)
+        catch (IOException ioe)
         {
-            throw pee;
+            String msg = "Velocity.invokeVelocimacro("+vmName+") failed";
+            getLog().error(msg, ioe);
+            throw new VelocityException(msg, ioe);
         }
-        catch(MethodInvocationException mie)
-        {
-            throw mie;
-        }
-        catch(ResourceNotFoundException rnfe)
-        {
-            throw rnfe;
-        }
-        catch(IOException ioe)
-        {
-            getLog().error("Velocity.invokeVelocimacro() failed", ioe);
-        }
-        /**
-         * pass through application level runtime exceptions
-         */
-        catch(RuntimeException re)
-        {
-            throw re;
-        }
-        return false;
     }
 
     /**
@@ -474,9 +353,10 @@ public class Velocity implements RuntimeConstants
 
         if ( template == null )
         {
-            getLog().error("Velocity.mergeTemplate() was unable to load template '"
-                           + templateName + "'");
-            return false;
+            String msg = "Velocity.mergeTemplate() was unable to load template '"
+                           + templateName + "'";
+            getLog().error(msg);
+            throw new ResourceNotFoundException(msg);
         }
         else
         {
@@ -548,6 +428,7 @@ public class Velocity implements RuntimeConstants
      * Use this to log error messages. It has the usual methods.
      *
      * @return A convenience Log instance that wraps the current LogChute.
+     * @since 1.5
      */
     public static Log getLog()
     {

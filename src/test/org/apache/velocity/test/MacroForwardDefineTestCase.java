@@ -25,6 +25,10 @@ import junit.framework.TestSuite;
 import org.apache.velocity.app.Velocity;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.test.misc.TestLogChute;
+import org.apache.velocity.Template;
+import org.apache.velocity.VelocityContext;
+
+import java.io.*;
 
 /**
  * Make sure that a forward referenced macro inside another macro definition does
@@ -32,7 +36,7 @@ import org.apache.velocity.test.misc.TestLogChute;
  * (VELOCITY-71).
  * 
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: MacroForwardDefineTestCase.java 491369 2006-12-31 02:52:05Z wglass $
+ * @version $Id: MacroForwardDefineTestCase.java 697214 2008-09-19 19:55:59Z nbubna $
  */
 public class MacroForwardDefineTestCase 
         extends BaseTestCase
@@ -57,7 +61,7 @@ public class MacroForwardDefineTestCase
      * Collects the log messages.
      */
     private TestLogChute logger = new TestLogChute();
-    
+
     /**
      * Default constructor.
      */
@@ -70,18 +74,17 @@ public class MacroForwardDefineTestCase
         throws Exception
     {
         assureResultsDirectoryExists(RESULTS_DIR);
-                
+
         // use Velocity.setProperty (instead of properties file) so that we can use actual instance of log
         Velocity.setProperty(RuntimeConstants.RESOURCE_LOADER,"file");
         Velocity.setProperty(RuntimeConstants.FILE_RESOURCE_LOADER_PATH, FILE_RESOURCE_LOADER_PATH );
         Velocity.setProperty(RuntimeConstants.RUNTIME_LOG_REFERENCE_LOG_INVALID,"true");
-        Velocity.setProperty(RuntimeConstants.VM_LIBRARY, "macros.vm");
 
         // actual instance of logger
         logger = new TestLogChute();
+        logger.off();
         Velocity.setProperty(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM,logger);
-        Velocity.setProperty("runtime.log.logsystem.test.level", "error");
-
+        Velocity.setProperty(TestLogChute.TEST_LOGGER_LEVEL, "debug");
         Velocity.init();
     }
 
@@ -93,9 +96,25 @@ public class MacroForwardDefineTestCase
     public void testLogResult()
         throws Exception
     {
-        if ( !isMatch(logger.getLog(), COMPARE_DIR, "velocity.log", "cmp"))
+        VelocityContext context = new VelocityContext();
+        Template template = Velocity.getTemplate("macros.vm");
+
+        // try to get only messages during merge
+        logger.on();
+        template.merge(context, new StringWriter());
+        logger.off();
+
+        String resultLog = logger.getLog();
+        if ( !isMatch(resultLog, COMPARE_DIR, "velocity.log", "cmp"))
         {
-            fail("Output incorrect.");
+            String compare = getFileContents(COMPARE_DIR, "velocity.log", CMP_FILE_EXT);
+
+            String msg = "Log output was incorrect\n"+
+                "-----Result-----\n"+ resultLog +
+                "----Expected----\n"+ compare +
+                "----------------";
+
+            fail(msg);
         }
     }
 }

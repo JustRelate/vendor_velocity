@@ -26,13 +26,13 @@ package org.apache.velocity.util.introspection;
  *
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: VelMethod.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: VelMethod.java 510625 2007-02-22 19:06:28Z nbubna $
  */
 public interface VelMethod
 {
     /**
-     *  invocation method - called when the method invocationshould be
-     *  preformed and a value returned
+     *  invocation method - called when the method invocation should be
+     *  performed and a value returned
      * @param o
      * @param params
      * @return The resulting object.

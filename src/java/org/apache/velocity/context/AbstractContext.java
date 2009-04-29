@@ -45,7 +45,7 @@ package org.apache.velocity.context;
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:fedor.karpelevitch@home.com">Fedor Karpelevitch</a>
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: AbstractContext.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: AbstractContext.java 702218 2008-10-06 18:15:18Z nbubna $
  */
 
 public abstract class AbstractContext extends InternalContextBase
@@ -154,18 +154,13 @@ public abstract class AbstractContext extends InternalContextBase
     public Object put(String key, Object value)
     {
         /*
-         * don't even continue if key or value is null
+         * don't even continue if key is null
          */
-
         if (key == null)
         {
             return null;
         }
-        else if (value == null)
-        {
-            return null;
-        }
-
+        
         return internalPut(key, value);
     }
 
@@ -219,7 +214,13 @@ public abstract class AbstractContext extends InternalContextBase
             return false;
         }
 
-        return internalContainsKey(key);
+        boolean exists = internalContainsKey(key);
+        if (!exists && innerContext != null)
+        {
+            exists = innerContext.containsKey(key);
+        }
+        
+        return exists;
     }
 
     /**

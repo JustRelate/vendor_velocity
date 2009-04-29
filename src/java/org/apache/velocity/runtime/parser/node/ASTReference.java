@@ -28,9 +28,11 @@ import org.apache.velocity.context.Context;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.Renderable;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.runtime.parser.Token;
 import org.apache.velocity.util.introspection.Info;
 import org.apache.velocity.util.introspection.VelPropertySet;
@@ -46,7 +48,7 @@ import org.apache.velocity.util.introspection.VelPropertySet;
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:Christoph.Reck@dlr.de">Christoph Reck</a>
  * @author <a href="mailto:kjohnson@transparent.com>Kent Johnson</a>
- * @version $Id: ASTReference.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTReference.java 730988 2009-01-03 14:15:56Z byron $
 */
 public class ASTReference extends SimpleNode
 {
@@ -68,6 +70,11 @@ public class ASTReference extends SimpleNode
 
     private String literal = null;
 
+    /**
+     * Indicates if we are running in strict reference mode.
+     */
+    public boolean strictRef = false;
+    
     private int numChildren = 0;
 
     protected Info uberInfo;
@@ -90,7 +97,7 @@ public class ASTReference extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -132,8 +139,7 @@ public class ASTReference extends SimpleNode
          * make an uberinfo - saves new's later on
          */
 
-        uberInfo = new Info(context.getCurrentTemplateName(),
-                getLine(),getColumn());
+        uberInfo = new Info(getTemplateName(), getLine(),getColumn());
 
         /*
          * track whether we log invalid references
@@ -141,6 +147,37 @@ public class ASTReference extends SimpleNode
         logOnNull =
             rsvc.getBoolean(RuntimeConstants.RUNTIME_LOG_REFERENCE_LOG_INVALID, true);
 
+        strictRef = rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false);
+ 
+        /**
+         * In the case we are referencing a variable with #if($foo) or
+         * #if( ! $foo) then we allow variables to be undefined and we 
+         * set strictRef to false so that if the variable is undefined
+         * an exception is not thrown. 
+         */
+        if (strictRef && numChildren == 0)
+        {
+            logOnNull = false; // Strict mode allows nulls
+            
+            Node node = this.jjtGetParent();
+            if (node instanceof ASTNotNode     // #if( ! $foo)
+             || node instanceof ASTExpression  // #if( $foo )
+             || node instanceof ASTOrNode      // #if( $foo || ...
+             || node instanceof ASTAndNode)    // #if( $foo && ...
+            {
+                // Now scan up tree to see if we are in an If statement
+                while (node != null)
+                {
+                    if (node instanceof ASTIfStatement)
+                    {
+                       strictRef = false;
+                       break;
+                    }
+                    node = node.jjtGetParent();
+                }
+            }
+        }
+                
         return data;
     }
 
@@ -174,7 +211,7 @@ public class ASTReference extends SimpleNode
 
         Object result = getVariableValue(context, rootString);
 
-        if (result == null)
+        if (result == null && !strictRef)
         {
             return EventHandlerUtil.invalidGetMethod(rsvc, context, 
                     "$" + rootString, null, null, uberInfo);
@@ -199,9 +236,22 @@ public class ASTReference extends SimpleNode
             int failedChild = -1;
             for (int i = 0; i < numChildren; i++)
             {
+                if (strictRef && result == null)
+                {
+                    /**
+                     * At this point we know that an attempt is about to be made
+                     * to call a method or property on a null value.
+                     */
+                    String name = jjtGetChild(i).getFirstToken().image;
+                    throw new VelocityException("Attempted to access '"  
+                        + name + "' on a null value at "
+                        + Log.formatFileString(uberInfo.getTemplateName(),
+                        + jjtGetChild(i).getLine(), jjtGetChild(i).getColumn()));                  
+                }
                 previousResult = result;
                 result = jjtGetChild(i).execute(result,context);
-                if (result == null)
+                if (result == null && !strictRef)  // If strict and null then well catch this
+                                                   // next time through the loop
                 {
                     failedChild = i;
                     break;
@@ -251,17 +301,6 @@ public class ASTReference extends SimpleNode
         }
         catch(MethodInvocationException mie)
         {
-            /*
-             *  someone tossed their cookies
-             */
-
-            log.error("Method " + mie.getMethodName()
-                        + " threw exception for reference $"
-                        + rootString
-                        + " in template " + context.getCurrentTemplateName()
-                        + " at " +  " [" + this.getLine() + ","
-                        + this.getColumn() + "]");
-
             mie.setReferenceName(rootString);
             throw mie;
         }
@@ -277,10 +316,9 @@ public class ASTReference extends SimpleNode
      * @throws IOException
      * @throws MethodInvocationException
      */
-    public boolean render(InternalContextAdapter context, Writer writer)
-        throws IOException, MethodInvocationException
+    public boolean render(InternalContextAdapter context, Writer writer) throws IOException,
+            MethodInvocationException
     {
-
         if (referenceType == RUNT)
         {
             if (context.getAllowRendering())
@@ -293,21 +331,25 @@ public class ASTReference extends SimpleNode
 
         Object value = execute(null, context);
 
+        String localNullString = null;
+
         /*
-         *  if this reference is escaped (\$foo) then we want to do one of two things :
-         *  1) if this is a reference in the context, then we want to print $foo
-         *  2) if not, then \$foo  (its considered schmoo, not VTL)
+         * if this reference is escaped (\$foo) then we want to do one of two things : 1) if this is
+         * a reference in the context, then we want to print $foo 2) if not, then \$foo (its
+         * considered schmoo, not VTL)
          */
 
         if (escaped)
         {
+            localNullString = getNullString(context);
+            
             if (value == null)
             {
                 if (context.getAllowRendering())
                 {
                     writer.write(escPrefix);
                     writer.write("\\");
-                    writer.write(nullString);
+                    writer.write(localNullString);
                 }
             }
             else
@@ -315,59 +357,60 @@ public class ASTReference extends SimpleNode
                 if (context.getAllowRendering())
                 {
                     writer.write(escPrefix);
-                    writer.write(nullString);
+                    writer.write(localNullString);
                 }
             }
-
             return true;
         }
 
         /*
-         *  the normal processing
-         *
-         *  if we have an event cartridge, get a new value object
+         * the normal processing
+         * 
+         * if we have an event cartridge, get a new value object
          */
 
-        value =  EventHandlerUtil.referenceInsert(rsvc, context, literal(), value);
+        value = EventHandlerUtil.referenceInsert(rsvc, context, literal(), value);
 
         String toString = null;
         if (value != null)
         {
+
+            if(value instanceof Renderable && ((Renderable)value).render(context,writer))
+            {
+                return true;
+            }
+
             toString = value.toString();
         }
 
-
-        /*
-         *  if value is null...
-         */
-
-        if ( value == null || toString == null)
+        if (value == null || toString == null)
         {
             /*
-             *  write prefix twice, because it's schmoo, so the \ don't escape each other...
+             * write prefix twice, because it's schmoo, so the \ don't escape each other...
              */
 
             if (context.getAllowRendering())
             {
+                localNullString = getNullString(context);
+
                 writer.write(escPrefix);
                 writer.write(escPrefix);
                 writer.write(morePrefix);
-                writer.write(nullString);
+                writer.write(localNullString);
             }
 
-            if (logOnNull && referenceType != QUIET_REFERENCE && log.isInfoEnabled())
+            if (logOnNull && referenceType != QUIET_REFERENCE && log.isDebugEnabled())
             {
-                log.info("Null reference [template '"
-                         + context.getCurrentTemplateName() + "', line "
-                         + this.getLine() + ", column " + this.getColumn()
-                         + "] : " + this.literal() + " cannot be resolved.");
+                log.debug("Null reference [template '" + getTemplateName()
+                        + "', line " + this.getLine() + ", column " + this.getColumn() + "] : "
+                        + this.literal() + " cannot be resolved.");
             }
             return true;
         }
         else
         {
             /*
-             *  non-null processing
+             * non-null processing
              */
 
             if (context.getAllowRendering())
@@ -379,6 +422,27 @@ public class ASTReference extends SimpleNode
 
             return true;
         }
+    }
+
+    /**
+     * This method helps to implement the "render literal if null" functionality.
+     * 
+     * VelocimacroProxy saves references to macro arguments (AST nodes) so that if we have a macro
+     * #foobar($a $b) then there is key "$a.literal" which points to the literal presentation of the
+     * argument provided to variable $a. If the value of $a is null, we render the string that was
+     * provided as the argument.
+     * 
+     * @param context
+     * @return
+     */
+    private String getNullString(InternalContextAdapter context)
+    {
+        Object callingArgument = context.get(".literal." + nullString);
+
+        if (callingArgument != null)
+            return ((Node) callingArgument).literal();
+        else
+            return nullString;
     }
 
     /**
@@ -405,9 +469,19 @@ public class ASTReference extends SimpleNode
                 return true;
             else
                 return false;
-        }
+        }        
         else
-            return true;
+        {
+            try
+            {
+                return value.toString() != null;
+            }
+            catch(Exception e)
+            {
+                throw new VelocityException("Reference evaluation threw an exception at " 
+                    + Log.formatFileString(this), e);
+            }
+        }
     }
 
     /**
@@ -449,12 +523,8 @@ public class ASTReference extends SimpleNode
 
         if (result == null)
         {
-            String msg = "reference set : template = "
-                + context.getCurrentTemplateName() +
-                " [line " + getLine() + ",column " +
-                getColumn() + "] : " + literal() +
-                " is not a valid reference.";
-            
+            String msg = "reference set is not a valid reference at "
+                    + Log.formatFileString(uberInfo);
             log.error(msg);
             return false;
         }
@@ -469,12 +539,16 @@ public class ASTReference extends SimpleNode
 
             if (result == null)
             {
-                String msg = "reference set : template = "
-                    + context.getCurrentTemplateName() +
-                    " [line " + getLine() + ",column " +
-                    getColumn() + "] : " + literal() +
-                    " is not a valid reference.";
-                
+                if (strictRef)
+                {
+                    String name = jjtGetChild(i+1).getFirstToken().image;
+                    throw new MethodInvocationException("Attempted to access '"  
+                        + name + "' on a null value", null, name, uberInfo.getTemplateName(),
+                        jjtGetChild(i+1).getLine(), jjtGetChild(i+1).getColumn());
+                }            
+              
+                String msg = "reference set is not a valid reference at "
+                    + Log.formatFileString(uberInfo);
                 log.error(msg);
 
                 return false;
@@ -494,7 +568,18 @@ public class ASTReference extends SimpleNode
                             value, uberInfo);
 
             if (vs == null)
-                return false;
+            {
+                if (strictRef)
+                {
+                    throw new MethodInvocationException("Object '" + result.getClass().getName() +
+                       "' does not contain property '" + identifier + "'", null, identifier,
+                       uberInfo.getTemplateName(), uberInfo.getLine(), uberInfo.getColumn());
+                }
+                else
+                {
+                  return false;
+                }
+            }
 
             vs.invoke(result, value);
         }
@@ -509,7 +594,7 @@ public class ASTReference extends SimpleNode
                 + identifier + "' in  " + result.getClass()
                 + " threw exception "
                 + ite.getTargetException().toString(),
-               ite.getTargetException(), identifier, context.getCurrentTemplateName(), this.getLine(), this.getColumn());
+               ite.getTargetException(), identifier, getTemplateName(), this.getLine(), this.getColumn());
         }
         /**
          * pass through application level runtime exceptions
@@ -523,10 +608,10 @@ public class ASTReference extends SimpleNode
             /*
              *  maybe a security exception?
              */
-            log.error("ASTReference setValue() : exception : " + e
-                                  + " template = " + context.getCurrentTemplateName()
-                                  + " [" + this.getLine() + "," + this.getColumn() + "]");
-            return false;
+            String msg = "ASTReference setValue() : exception : " + e
+                          + " template at " + Log.formatFileString(uberInfo);
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
          }
 
         return true;
@@ -667,6 +752,7 @@ public class ASTReference extends SimpleNode
          *  we are working with.
          */
 
+        // FIXME: this is the key to render nulls as literals, we need to look at context(refname+".literal") 
         nullString = literal();
 
         if (t.image.startsWith("$!"))
@@ -737,7 +823,30 @@ public class ASTReference extends SimpleNode
      */
     public Object getVariableValue(Context context, String variable) throws MethodInvocationException
     {
-        return context.get(variable);
+        Object obj = null;
+        try
+        {
+            obj = context.get(variable);
+        }
+        catch(RuntimeException e)
+        {
+            log.error("Exception calling reference $" + variable + " at "
+                      + Log.formatFileString(uberInfo));
+            throw e;
+        }
+        
+        if (strictRef && obj == null)
+        {
+          if (!context.containsKey(variable))
+          {
+              log.error("Variable $" + variable + " has not been set at "
+                        + Log.formatFileString(uberInfo));
+              throw new MethodInvocationException("Variable $" + variable +
+                  " has not been set", null, identifier,
+                  uberInfo.getTemplateName(), uberInfo.getLine(), uberInfo.getColumn());            
+          }
+        }
+        return obj;        
     }
 
 
@@ -774,7 +883,8 @@ public class ASTReference extends SimpleNode
     {
         if (literal != null)
             return literal;
-
+        
+        // this value could be cached in this.literal but it increases memory usage
         return super.literal();
     }
 }

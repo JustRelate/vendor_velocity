@@ -37,7 +37,7 @@ import org.apache.velocity.runtime.RuntimeServices;
  *  version :)
  *
  * @author <a href="mailto:geirm@apache.org>Geir Magnusson Jr.</a>
- * @version $Id: SimpleLog4JLogSystem.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: SimpleLog4JLogSystem.java 718424 2008-11-17 22:50:43Z nbubna $
  * @deprecated Use Log4JLogChute instead.
  */
 public class SimpleLog4JLogSystem implements LogSystem
@@ -147,12 +147,10 @@ public class SimpleLog4JLogSystem implements LogSystem
             case LogSystem.INFO_ID:
                 logger.info(message);
                 break;
-            case LogSystem.DEBUG_ID:
-                logger.debug(message);
-                break;
             case LogSystem.ERROR_ID:
                 logger.error(message);
                 break;
+            case LogSystem.DEBUG_ID:
             default:
                 logger.debug(message);
                 break;

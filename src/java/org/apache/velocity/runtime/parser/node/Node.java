@@ -16,7 +16,7 @@ package org.apache.velocity.runtime.parser.node;
  * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
  * KIND, either express or implied.  See the License for the
  * specific language governing permissions and limitations
- * under the License.    
+ * under the License.
  */
 
 import java.io.IOException;
@@ -27,7 +27,6 @@ import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.TemplateInitException;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.runtime.parser.Token;
 
 /**
@@ -35,7 +34,7 @@ import org.apache.velocity.runtime.parser.Token;
  *  and the JavaCC generated code.
  *
  * @author <a href="mailto:hps@intermeta.de">Henning P. Schmiedehausen</a>
- * @version $Id: Node.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: Node.java 720228 2008-11-24 16:58:33Z nbubna $
  */
 
 public interface Node
@@ -45,14 +44,16 @@ public interface Node
     public void jjtOpen();
 
     /** This method is called after all the child nodes have been
-      added. */
+      added.
+     */
     public void jjtClose();
 
     /**
      * This pair of methods are used to inform the node of its
      * parent.
      * @param n
-     * */
+     *
+     */
     public void jjtSetParent(Node n);
 
     /**
@@ -123,7 +124,7 @@ public interface Node
      * @param context
      * @param data
      * @return The init result.
-     * @throws TemplateInitException 
+     * @throws TemplateInitException
      */
     public Object init( InternalContextAdapter context, Object data) throws TemplateInitException;
 
@@ -198,4 +199,9 @@ public interface Node
      * @return The current column position.
      */
     public int getColumn();
+    
+    /**
+     * @return the file name of the template
+     */
+    public String getTemplateName();
 }

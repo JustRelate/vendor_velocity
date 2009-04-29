@@ -23,6 +23,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.StringReader;
+import java.io.Writer;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.Hashtable;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.collections.ExtendedProperties;
+import org.apache.commons.lang.text.StrBuilder;
 import org.apache.velocity.Template;
 import org.apache.velocity.app.event.EventCartridge;
 import org.apache.velocity.app.event.EventHandler;
@@ -38,13 +41,19 @@ import org.apache.velocity.app.event.InvalidReferenceEventHandler;
 import org.apache.velocity.app.event.MethodExceptionEventHandler;
 import org.apache.velocity.app.event.NullSetEventHandler;
 import org.apache.velocity.app.event.ReferenceInsertionEventHandler;
+import org.apache.velocity.context.Context;
+import org.apache.velocity.context.InternalContextAdapterImpl;
+import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
+import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.directive.Directive;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.log.LogManager;
 import org.apache.velocity.runtime.parser.ParseException;
 import org.apache.velocity.runtime.parser.Parser;
+import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
 import org.apache.velocity.runtime.resource.ContentResource;
 import org.apache.velocity.runtime.resource.ResourceManager;
@@ -54,6 +63,8 @@ import org.apache.velocity.util.StringUtils;
 import org.apache.velocity.util.introspection.Introspector;
 import org.apache.velocity.util.introspection.Uberspect;
 import org.apache.velocity.util.introspection.UberspectLoggable;
+import org.apache.velocity.util.introspection.ChainableUberspector;
+import org.apache.velocity.util.introspection.LinkingUberspector;
 
 /**
  * This is the Runtime system for Velocity. It is the
@@ -100,7 +111,7 @@ import org.apache.velocity.util.introspection.UberspectLoggable;
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:jlb@houseofdistraction.com">Jeff Bowden</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magusson Jr.</a>
- * @version $Id: RuntimeInstance.java 474051 2006-11-12 21:42:02Z henning $
+ * @version $Id: RuntimeInstance.java 703049 2008-10-09 03:18:58Z nbubna $
  */
 public class RuntimeInstance implements RuntimeConstants, RuntimeServices
 {
@@ -184,9 +195,8 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
      *  pluggable components
      */
     private Map applicationAttributes = null;
-
-
     private Uberspect uberSpect;
+    private String encoding;
 
     /**
      * Creates a new RuntimeInstance object.
@@ -260,10 +270,31 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     /**
      * Returns true if the RuntimeInstance has been successfully initialized.
      * @return True if the RuntimeInstance has been successfully initialized.
+     * @since 1.5
      */
     public boolean isInitialized()
     {
         return initialized;
+    }
+
+    /**
+     * Init or die! (with some log help, of course)
+     */
+    private void requireInitialization()
+    {
+        if (!initialized && !initializing)
+        {
+            log.debug("Velocity was not initialized! Calling init()...");
+            try
+            {
+                init();
+            }
+            catch (Exception e)
+            {
+                getLog().error("Could not auto-initialize Velocity", e);
+                throw new RuntimeException("Velocity could not be initialized!", e);
+            }
+        }
     }
 
     /**
@@ -273,10 +304,10 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     private void initializeIntrospection()
         throws Exception
     {
-        String rm = getString(RuntimeConstants.UBERSPECT_CLASSNAME);
-
-        if (rm != null && rm.length() > 0)
+        String[] uberspectors = configuration.getStringArray(RuntimeConstants.UBERSPECT_CLASSNAME);
+        for (int i=0; i <uberspectors.length;i++)
         {
+            String rm = uberspectors[i];
             Object o = null;
 
             try
@@ -301,32 +332,52 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
                 throw new Exception(err);
             }
 
-            uberSpect = (Uberspect) o;
+            Uberspect u = (Uberspect)o;
 
-            if (uberSpect instanceof UberspectLoggable)
+            if (u instanceof UberspectLoggable)
             {
-                ((UberspectLoggable) uberSpect).setLog(getLog());
+                ((UberspectLoggable)u).setLog(getLog());
             }
 
-            if (uberSpect instanceof RuntimeServicesAware)
+            if (u instanceof RuntimeServicesAware)
             {
-                ((RuntimeServicesAware) uberSpect).setRuntimeServices(this);
+                ((RuntimeServicesAware)u).setRuntimeServices(this);
             }
-            
+
+            if (uberSpect == null)
+            {
+                uberSpect = u;
+            }
+            else
+            {
+                if (u instanceof ChainableUberspector)
+                {
+                    ((ChainableUberspector)u).wrap(uberSpect);
+                    uberSpect = u;
+                }
+                else
+                {
+                    uberSpect = new LinkingUberspector(uberSpect,u);
+                }
+            }
+        }
+
+        if(uberSpect != null)
+        {
             uberSpect.init();
-         }
-         else
-         {
-            /*
-             *  someone screwed up.  Lets not fool around...
-             */
+        }
+        else
+        {
+           /*
+            *  someone screwed up.  Lets not fool around...
+            */
 
-            String err = "It appears that no class was specified as the"
-            + " Uberspect.  Please ensure that all configuration"
-            + " information is correct.";
+           String err = "It appears that no class was specified as the"
+           + " Uberspect.  Please ensure that all configuration"
+           + " information is correct.";
 
-            log.error(err);
-            throw new Exception(err);
+           log.error(err);
+           throw new Exception(err);
         }
     }
 
@@ -355,7 +406,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
         }
         catch (IOException ioe)
         {
-            log.error("Cannot get Velocity Runtime default properties!", ioe);
+            String msg = "Cannot get Velocity Runtime default properties!";
+            log.error(msg, ioe);
+            throw new RuntimeException(msg, ioe);
         }
         finally
         {
@@ -368,7 +421,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
             }
             catch (IOException ioe)
             {
-                log.error("Cannot close Velocity Runtime default properties!", ioe);
+                String msg = "Cannot close Velocity Runtime default properties!";
+                log.error(msg, ioe);
+                throw new RuntimeException(msg, ioe);
             }
         }
     }
@@ -530,8 +585,20 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
      */
     public void init(Properties p) throws Exception
     {
-        overridingProperties = ExtendedProperties.convertProperties(p);
+        setProperties(ExtendedProperties.convertProperties(p));
         init();
+    }
+
+    private void setProperties(ExtendedProperties p)
+    {
+        if (overridingProperties == null)
+        {
+            overridingProperties = p;
+        }
+        else
+        {
+            overridingProperties.combine(p);
+        }
     }
 
     /**
@@ -544,7 +611,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     public void init(String configurationFile)
         throws Exception
     {
-        overridingProperties = new ExtendedProperties(configurationFile);
+        setProperties(new ExtendedProperties(configurationFile));
         init();
     }
 
@@ -774,7 +841,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
         }
         catch (IOException ioe)
         {
-            log.error("Error while loading directive properties!", ioe);
+            String msg = "Error while loading directive properties!";
+            log.error(msg, ioe);
+            throw new RuntimeException(msg, ioe);
         }
         finally
         {
@@ -787,7 +856,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
             }
             catch (IOException ioe)
             {
-                log.error("Cannot close directive properties!", ioe);
+                String msg = "Cannot close directive properties!";
+                log.error(msg, ioe);
+                throw new RuntimeException(msg, ioe);
             }
         }
 
@@ -816,12 +887,40 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
         for( int i = 0; i < userdirective.length; i++)
         {
             loadDirective(userdirective[i]);
-            if (log.isInfoEnabled())
+            if (log.isDebugEnabled())
             {
-                log.info("Loaded User Directive: " + userdirective[i]);
+                log.debug("Loaded User Directive: " + userdirective[i]);
             }
         }
 
+    }
+
+    /**
+     * Programatically add a directive.
+     * @param directive
+     */
+    public void addDirective(Directive directive) 
+    {
+        runtimeDirectives.put(directive.getName(), directive);
+    }
+
+    /**
+     * Retrieve a previously instantiated directive.
+     * @param name name of the directive
+     * @return the {@link Directive} for that name
+     */
+    public Directive getDirective(String name) 
+    {
+        return (Directive) runtimeDirectives.get(name);
+    }
+
+    /**
+     * Remove a directive.
+     * @param name name of the directive.
+     */
+    public void removeDirective(String name) 
+    {
+        runtimeDirectives.remove(name);
     }
 
     /**
@@ -838,12 +937,14 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
             if (o instanceof Directive)
             {
                 Directive directive = (Directive) o;
-                runtimeDirectives.put(directive.getName(), directive);
+                addDirective(directive);
             }
             else
             {
-                log.error(directiveClass + " does not implement "
-                    + Directive.class.getName() + "; it cannot be loaded.");
+                String msg = directiveClass + " does not implement "
+                    + Directive.class.getName() + "; it cannot be loaded.";
+                log.error(msg);
+                throw new VelocityException(msg);
             }
         }
         // The ugly threesome:  ClassNotFoundException,
@@ -851,7 +952,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
         // Ignore Findbugs complaint for now.
         catch (Exception e)
         {
-            log.error("Failed to load Directive: " + directiveClass, e);
+            String msg = "Failed to load Directive: " + directiveClass;
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 
@@ -926,24 +1029,35 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
      */
     public Parser createNewParser()
     {
-        /* must be initialized before we use runtimeDirectives */
-        if (!initialized && !initializing)
-        {
-            log.debug("Velocity was not initialized! Calling init()...");
-            try
-            {
-                init();
-            }
-            catch (Exception e)
-            {
-                getLog().error("Could not auto-initialize Velocity", e);
-                throw new IllegalStateException("Velocity could not be initialized!");
-            }
-        }
+        requireInitialization();
 
         Parser parser = new Parser(this);
         parser.setDirectives(runtimeDirectives);
         return parser;
+    }
+
+    /**
+     * Parse the input and return the root of
+     * AST node structure.
+     * <br><br>
+     *  In the event that it runs out of parsers in the
+     *  pool, it will create and let them be GC'd
+     *  dynamically, logging that it has to do that.  This
+     *  is considered an exceptional condition.  It is
+     *  expected that the user will set the
+     *  PARSER_POOL_SIZE property appropriately for their
+     *  application.  We will revisit this.
+     *
+     * @param string String to be parsed
+     * @param templateName name of the template being parsed
+     * @return A root node representing the template as an AST tree.
+     * @throws ParseException When the string could not be parsed as a template.
+     * @since 1.6
+     */
+    public SimpleNode parse(String string, String templateName)
+        throws ParseException
+    {
+        return parse(new StringReader(string), templateName);
     }
 
     /**
@@ -984,77 +1098,266 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     public SimpleNode parse(Reader reader, String templateName, boolean dumpNamespace)
         throws ParseException
     {
-        /* must be initialized before using parserPool */
-        if (!initialized && !initializing)
-        {
-            log.debug("Velocity was not initialized! Calling init()...");
-            try
-            {
-                init();
-            }
-            catch (Exception e)
-            {
-                getLog().error("Could not auto-initialize Velocity", e);
-                throw new IllegalStateException("Velocity could not be initialized!");
-            }
-        }
+        requireInitialization();
 
-        SimpleNode ast = null;
         Parser parser = (Parser) parserPool.get();
-
+        boolean keepParser = true;
         if (parser == null)
         {
             /*
-             *  if we couldn't get a parser from the pool
-             *  make one and log it.
+             *  if we couldn't get a parser from the pool make one and log it.
              */
-
             if (log.isInfoEnabled())
             {
                 log.info("Runtime : ran out of parsers. Creating a new one. "
                       + " Please increment the parser.pool.size property."
                       + " The current value is too small.");
             }
-
             parser = createNewParser();
-
+            keepParser = false;
         }
 
-        /*
-         *  now, if we have a parser
-         */
-
-        if (parser != null)
+        try
         {
-            try
+            /*
+             *  dump namespace if we are told to.  Generally, you want to
+             *  do this - you don't in special circumstances, such as
+             *  when a VM is getting init()-ed & parsed
+             */
+            if (dumpNamespace)
             {
-                /*
-                 *  dump namespace if we are told to.  Generally, you want to
-                 *  do this - you don't in special circumstances, such as
-                 *  when a VM is getting init()-ed & parsed
-                 */
-
-                if (dumpNamespace)
-                {
-                    dumpVMNamespace(templateName);
-                }
-
-                ast = parser.parse(reader, templateName);
+                dumpVMNamespace(templateName);
             }
-            finally
+            return parser.parse(reader, templateName);
+        }
+        finally
+        {
+            if (keepParser)
             {
-                /*
-                 *  put it back
-                 */
                 parserPool.put(parser);
-
             }
+
+        }
+    }
+
+    /**
+     * Renders the input string using the context into the output writer.
+     * To be used when a template is dynamically constructed, or want to use
+     * Velocity as a token replacer.
+     *
+     * @param context context to use in rendering input string
+     * @param out  Writer in which to render the output
+     * @param logTag  string to be used as the template name for log
+     *                messages in case of error
+     * @param instring input string containing the VTL to be rendered
+     *
+     * @return true if successful, false otherwise.  If false, see
+     *              Velocity runtime log
+     * @throws ParseErrorException The template could not be parsed.
+     * @throws MethodInvocationException A method on a context object could not be invoked.
+     * @throws ResourceNotFoundException A referenced resource could not be loaded.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
+     * @since Velocity 1.6
+     */
+    public boolean evaluate(Context context,  Writer out,
+                            String logTag, String instring) throws IOException
+    {
+        return evaluate(context, out, logTag, new StringReader(instring));
+    }
+
+    /**
+     * Renders the input reader using the context into the output writer.
+     * To be used when a template is dynamically constructed, or want to
+     * use Velocity as a token replacer.
+     *
+     * @param context context to use in rendering input string
+     * @param writer  Writer in which to render the output
+     * @param logTag  string to be used as the template name for log messages
+     *                in case of error
+     * @param reader Reader containing the VTL to be rendered
+     *
+     * @return true if successful, false otherwise.  If false, see
+     *              Velocity runtime log
+     * @throws ParseErrorException The template could not be parsed.
+     * @throws MethodInvocationException A method on a context object could not be invoked.
+     * @throws ResourceNotFoundException A referenced resource could not be loaded.
+     * @throws IOException While reading from the reader or rendering to the writer,
+     *                     an I/O problem occured.
+     * @since Velocity 1.6
+     */
+    public boolean evaluate(Context context, Writer writer,
+                            String logTag, Reader reader) throws IOException
+    {
+        if (logTag == null)
+        {
+            throw new NullPointerException("logTag (i.e. template name) cannot be null, you must provide an identifier for the content being evaluated");
+        }
+
+        SimpleNode nodeTree = null;
+        try
+        {
+            nodeTree = parse(reader, logTag);
+        }
+        catch (ParseException pex)
+        {
+            throw new ParseErrorException(pex);
+        }
+        catch (TemplateInitException pex)
+        {
+            throw new ParseErrorException(pex);
+        }
+
+        if (nodeTree == null)
+        {
+            return false;
         }
         else
         {
-            log.error("Runtime : ran out of parsers and unable to create more.");
+            return render(context, writer, logTag, nodeTree);
         }
-        return ast;
+    }
+
+
+    /**
+     * Initializes and renders the AST {@link SimpleNode} using the context
+     * into the output writer.
+     *
+     * @param context context to use in rendering input string
+     * @param writer  Writer in which to render the output
+     * @param logTag  string to be used as the template name for log messages
+     *                in case of error
+     * @param nodeTree SimpleNode which is the root of the AST to be rendered
+     *
+     * @return true if successful, false otherwise.  If false, see
+     *              Velocity runtime log for errors
+     * @throws ParseErrorException The template could not be parsed.
+     * @throws MethodInvocationException A method on a context object could not be invoked.
+     * @throws ResourceNotFoundException A referenced resource could not be loaded.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
+     * @since Velocity 1.6
+     */
+    public boolean render(Context context, Writer writer,
+                          String logTag, SimpleNode nodeTree) throws IOException
+    {
+        /*
+         * we want to init then render
+         */
+        InternalContextAdapterImpl ica =
+            new InternalContextAdapterImpl(context);
+
+        ica.pushCurrentTemplateName(logTag);
+
+        try
+        {
+            try
+            {
+                nodeTree.init(ica, this);
+            }
+            catch (TemplateInitException pex)
+            {
+                throw new ParseErrorException(pex);
+            }
+            /**
+             * pass through application level runtime exceptions
+             */
+            catch(RuntimeException e)
+            {
+                throw e;
+            }
+            catch(Exception e)
+            {
+                String msg = "RuntimeInstance.render(): init exception for tag = "+logTag;
+                getLog().error(msg, e);
+                throw new VelocityException(msg, e);
+            }
+
+            /*
+             *  now render, and let any exceptions fly
+             */
+            nodeTree.render(ica, writer);
+        }
+        finally
+        {
+            ica.popCurrentTemplateName();
+        }
+
+        return true;
+    }
+
+    /**
+     * Invokes a currently registered Velocimacro with the params provided
+     * and places the rendered stream into the writer.
+     * <br>
+     * Note : currently only accepts args to the VM if they are in the context.
+     *
+     * @param vmName name of Velocimacro to call
+     * @param logTag string to be used for template name in case of error. if null,
+     *               the vmName will be used
+     * @param params keys for args used to invoke Velocimacro, in java format
+     *               rather than VTL (eg  "foo" or "bar" rather than "$foo" or "$bar")
+     * @param context Context object containing data/objects used for rendering.
+     * @param writer  Writer for output stream
+     * @return true if Velocimacro exists and successfully invoked, false otherwise.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
+     * @since 1.6
+     */
+    public boolean invokeVelocimacro(final String vmName, String logTag,
+                                     String[] params, final Context context,
+                                     final Writer writer)
+        throws IOException
+    {
+        /* check necessary parameters */
+        if (vmName == null || context == null || writer == null)
+        {
+            String msg = "RuntimeInstance.invokeVelocimacro() : invalid call : vmName, context, and writer must not be null";
+            getLog().error(msg);
+            throw new NullPointerException(msg);
+        }
+
+        /* handle easily corrected parameters */
+        if (logTag == null)
+        {
+            logTag = vmName;
+        }
+        if (params == null)
+        {
+            params = new String[0];
+        }
+
+        /* does the VM exist? */
+        if (!isVelocimacro(vmName, logTag))
+        {
+            String msg = "RuntimeInstance.invokeVelocimacro() : VM '" + vmName
+                         + "' is not registered.";
+            getLog().error(msg);
+            throw new VelocityException(msg);
+        }
+
+        /* now just create the VM call, and use evaluate */
+        StrBuilder template = new StrBuilder("#");
+        template.append(vmName);
+        template.append("(");
+        for( int i = 0; i < params.length; i++)
+        {
+            template.append(" $");
+            template.append(params[i]);
+        }
+        template.append(" )");
+
+        return evaluate(context, writer, logTag, template.toString());
+    }
+
+    /**
+     * Retrieves and caches the configured default encoding
+     * for better performance. (VELOCITY-606)
+     */
+    private String getDefaultEncoding()
+    {
+        if (encoding == null)
+        {
+            encoding = getString(INPUT_ENCODING, ENCODING_DEFAULT);
+        }
+        return encoding;
     }
 
     /**
@@ -1074,7 +1377,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     public Template getTemplate(String name)
         throws ResourceNotFoundException, ParseErrorException, Exception
     {
-        return getTemplate(name, getString( INPUT_ENCODING, ENCODING_DEFAULT));
+        return getTemplate(name, getDefaultEncoding());
     }
 
     /**
@@ -1092,12 +1395,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     public Template getTemplate(String name, String  encoding)
         throws ResourceNotFoundException, ParseErrorException, Exception
     {
-        /* must be initialized before using resourceManager */
-        if (!initialized && !initializing)
-        {
-            log.info("Velocity not initialized yet. Calling init()...");
-            init();
-        }
+        requireInitialization();
 
         return (Template)
                 resourceManager.getResource(name,
@@ -1124,7 +1422,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
          *  the bytestream should be dumped to the output stream
          */
 
-        return getContent(name, getString( INPUT_ENCODING, ENCODING_DEFAULT));
+        return getContent(name, getDefaultEncoding());
     }
 
     /**
@@ -1142,12 +1440,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     public ContentResource getContent(String name, String encoding)
         throws ResourceNotFoundException, ParseErrorException, Exception
     {
-        /* must be initialized before using resourceManager */
-        if (!initialized && !initializing)
-        {
-            log.info("Velocity not initialized yet. Calling init()...");
-            init();
-        }
+        requireInitialization();
 
         return (ContentResource)
                 resourceManager.getResource(name,
@@ -1166,20 +1459,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
      */
     public String getLoaderNameForResource(String resourceName)
     {
-        /* must be initialized before using resourceManager */
-        if (!initialized && !initializing)
-        {
-            log.debug("Velocity was not initialized! Calling init()...");
-            try
-            {
-                init();
-            }
-            catch (Exception e)
-            {
-                getLog().error("Could not initialize Velocity", e);
-                throw new IllegalStateException("Velocity could not be initialized!");
-            }
-        }
+        requireInitialization();
 
         return resourceManager.getLoaderNameForResource(resourceName);
     }
@@ -1189,6 +1469,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
      * Use this to log error messages. It has the usual methods.
      *
      * @return A convenience Log instance that wraps the current LogChute.
+     * @since 1.5
      */
     public Log getLog()
     {
@@ -1250,18 +1531,39 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     }
 
     /**
-     * Returns the appropriate VelocimacroProxy object if strVMname
+     * Returns the appropriate VelocimacroProxy object if vmName
      * is a valid current Velocimacro.
      *
      * @param vmName Name of velocimacro requested
      * @param templateName Name of the template that contains the velocimacro.
      * @return The requested VelocimacroProxy.
+     * @since 1.6
      */
     public Directive getVelocimacro(String vmName, String templateName)
     {
         return vmFactory.getVelocimacro( vmName, templateName );
     }
 
+    /**
+     * Returns the appropriate VelocimacroProxy object if vmName
+     * is a valid current Velocimacro.
+     *
+     * @param vmName  Name of velocimacro requested
+     * @param templateName Name of the namespace.
+     * @param renderingTemplate Name of the template we are currently rendering. This
+     *    information is needed when VM_PERM_ALLOW_INLINE_REPLACE_GLOBAL setting is true
+     *    and template contains a macro with the same name as the global macro library.
+     * 
+     * @since Velocity 1.6
+     * 
+     * @return VelocimacroProxy
+     */
+    public Directive getVelocimacro(String vmName, String templateName, String renderingTemplate)
+    {
+        return vmFactory.getVelocimacro( vmName, templateName, renderingTemplate );
+    }
+    
+    
    /**
     * Adds a new Velocimacro. Usually called by Macro only while parsing.
     *
@@ -1270,6 +1572,9 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     * @param argArray Array of strings, containing the
     *                         #macro() arguments.  the 0th is the name.
     * @param sourceTemplate Name of the template that contains the velocimacro.
+    * 
+    * @deprecated Use addVelocimacro(String, Node, String[], String) instead
+    * 
     * @return True if added, false if rejected for some
     *                  reason (either parameters or permission settings)
     */
@@ -1281,6 +1586,31 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
         return vmFactory.addVelocimacro(name, macro,  argArray,  sourceTemplate);
     }
 
+    /**
+     * Adds a new Velocimacro. Usually called by Macro only while parsing.
+     * 
+     * Called by org.apache.velocity.runtime.directive.processAndRegister
+     *
+     * @param name  Name of velocimacro
+     * @param macro  root AST node of the parsed macro
+     * @param argArray  Array of strings, containing the
+     *                         #macro() arguments.  the 0th is the name.
+     * @param sourceTemplate
+     * 
+     * @since Velocity 1.6
+     *                   
+     * @return boolean  True if added, false if rejected for some
+     *                  reason (either parameters or permission settings)
+     */
+    public boolean addVelocimacro( String name,
+                                          Node macro,
+                                          String argArray[],
+                                          String sourceTemplate )
+    {
+        return vmFactory.addVelocimacro(name, macro,  argArray,  sourceTemplate);
+    }
+    
+    
     /**
      *  Checks to see if a VM exists
      *
@@ -1384,6 +1714,7 @@ public class RuntimeInstance implements RuntimeConstants, RuntimeServices
     /**
      * Returns the event handlers for the application.
      * @return The event handlers for the application.
+     * @since 1.5
      */
     public EventCartridge getApplicationEventCartridge()
     {

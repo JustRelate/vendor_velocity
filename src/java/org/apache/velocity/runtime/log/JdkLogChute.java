@@ -28,14 +28,17 @@ import org.apache.velocity.runtime.RuntimeServices;
  * Implementation of a simple java.util.logging LogChute.
  *
  * @author <a href="mailto:nbubna@apache.org>Nathan Bubna</a>
- * @version $Id: JdkLogChute.java 463298 2006-10-12 16:10:32Z henning $
- * @since Velocity 1.5
+ * @version $Id: JdkLogChute.java 703541 2008-10-10 18:09:42Z nbubna $
+ * @since 1.5
  */
 public class JdkLogChute implements LogChute
 {
     /** Property key for specifying the name for the logger instance */
     public static final String RUNTIME_LOG_JDK_LOGGER =
         "runtime.log.logsystem.jdk.logger";
+
+    public static final String RUNTIME_LOG_JDK_LOGGER_LEVEL =
+        "runtime.log.logsystem.jdk.logger.level";
 
     /** Default name for the JDK logger instance */
     public static final String DEFAULT_LOG_NAME = "org.apache.velocity";
@@ -56,7 +59,17 @@ public class JdkLogChute implements LogChute
             name = DEFAULT_LOG_NAME;
         }
         logger = Logger.getLogger(name);
-        log(LogChute.DEBUG_ID, "JdkLogChute will use logger '"+name+'\'');
+
+        /* get and set specified level for this logger, */
+        String lvl = rs.getString(RUNTIME_LOG_JDK_LOGGER_LEVEL);
+        if (lvl != null)
+        {
+            Level level = Level.parse(lvl);
+            logger.setLevel(level);
+            log(LogChute.DEBUG_ID, "JdkLogChute will use logger '"
+                +name+'\''+" at level '"+level+'\'');
+        }
+
     }
 
     /**

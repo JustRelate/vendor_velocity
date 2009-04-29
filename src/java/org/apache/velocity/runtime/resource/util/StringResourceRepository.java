@@ -25,7 +25,8 @@ package org.apache.velocity.runtime.resource.util;
  *
  * @author <a href="mailto:eelco.hillenius@openedge.nl">Eelco Hillenius</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: StringResourceRepository.java 479058 2006-11-25 00:26:32Z henning $
+ * @version $Id: StringResourceRepository.java 685724 2008-08-13 23:12:12Z nbubna $
+ * @since 1.5
  */
 public interface StringResourceRepository
 {
@@ -44,15 +45,23 @@ public interface StringResourceRepository
     void putStringResource(String name, String body);
 
     /**
+     * add a string resource with given key.
+     * @param name The String name to store the template under.
+     * @param body A String containing a template.
+     * @param encoding The encoding of this string template
+     * @since 1.6
+     */
+    void putStringResource(String name, String body, String encoding);
+
+    /**
      * delete a string resource with given key.
      * @param name The string name to remove from the repository.
      */
     void removeStringResource(String name);
     
     /**
-     * Sets the encoding of the repository. The encoding should be stored per
-     * template string so that multiple encodings can be stored in a single repository.
-     * The default implementation does this correctly.
+     * Sets the default encoding of the repository. Encodings can also be stored per
+     * template string. The default implementation does this correctly.
      * 
      * @param encoding The encoding to use.
      */

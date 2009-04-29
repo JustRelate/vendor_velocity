@@ -39,13 +39,13 @@ import org.apache.velocity.context.Context;
  * $formatter.limitLen(30, $object.Description)
  * </pre></code>
  *
- * @deprecated This servlet has been replaced by NumberTool and DateTool,
- * both available from the Velocity-Tools sub-project.
+ * @deprecated This class has been replaced by NumberTool, DateTool,
+ * DisplayTool, and AlternatorTool available from the Velocity-Tools sub-project.
  * VelocityFormatter will be removed in a future version of Velocity.
  *
  * @author <a href="sean@somacity.com">Sean Legassick</a>
  * @author <a href="dlr@collab.net">Daniel Rall</a>
- * @version $Id: VelocityFormatter.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: VelocityFormatter.java 544641 2007-06-05 21:30:22Z nbubna $
  */
 public class VelocityFormatter
 {

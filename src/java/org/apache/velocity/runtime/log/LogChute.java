@@ -28,7 +28,8 @@ import org.apache.velocity.runtime.RuntimeServices;
  * @author <a href="mailto:jon@latchkey.com">Jon S. Stevens</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:nbubna@apache.org">Nathan Bubna</a>
- * @version $Id: LogChute.java 494611 2007-01-09 21:57:20Z henning $
+ * @version $Id: LogChute.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public interface LogChute
 {

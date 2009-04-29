@@ -21,7 +21,6 @@ package org.apache.velocity.runtime.parser.node;
 
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 
 /**
  * This class is responsible for handling the Else VTL control statement.
@@ -31,7 +30,7 @@ import org.apache.velocity.runtime.parser.ParserVisitor;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTElseStatement.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ASTElseStatement.java 517553 2007-03-13 06:09:58Z wglass $
  */
 public class ASTElseStatement extends SimpleNode
 {
@@ -53,7 +52,7 @@ public class ASTElseStatement extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {

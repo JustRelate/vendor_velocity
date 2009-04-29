@@ -1,52 +1,56 @@
 package org.apache.velocity.runtime.parser.node;
 
 /*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing,
- * software distributed under the License is distributed on an
- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied.  See the License for the
- * specific language governing permissions and limitations
- * under the License.    
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements. See the NOTICE file distributed with this
+ * work for additional information regarding copyright ownership. The ASF
+ * licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+ * License for the specific language governing permissions and limitations under
+ * the License.
  */
 
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 
+import org.apache.commons.lang.text.StrBuilder;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.ParseException;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
+import org.apache.velocity.runtime.parser.Token;
+import org.apache.velocity.runtime.visitor.BaseVisitor;
 
 /**
- * ASTStringLiteral support.  Will interpolate!
- *
+ * ASTStringLiteral support. Will interpolate!
+ * 
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: ASTStringLiteral.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTStringLiteral.java 705297 2008-10-16 17:59:24Z nbubna $
  */
 public class ASTStringLiteral extends SimpleNode
 {
     /* cache the value of the interpolation switch */
     private boolean interpolate = true;
+
     private SimpleNode nodeTree = null;
+
     private String image = "";
+
     private String interpolateimage = "";
 
     /** true if the string contains a line comment (##) */
@@ -70,60 +74,63 @@ public class ASTStringLiteral extends SimpleNode
     }
 
     /**
-     *  init : we don't have to do much.  Init the tree (there
-     *  shouldn't be one) and then see if interpolation is turned on.
+     * init : we don't have to do much. Init the tree (there shouldn't be one)
+     * and then see if interpolation is turned on.
+     * 
      * @param context
      * @param data
      * @return Init result.
      * @throws TemplateInitException
      */
     public Object init(InternalContextAdapter context, Object data)
-    throws TemplateInitException
+            throws TemplateInitException
     {
         /*
-         *  simple habit...  we prollie don't have an AST beneath us
+         * simple habit... we prollie don't have an AST beneath us
          */
 
         super.init(context, data);
 
         /*
-         *  the stringlit is set at template parse time, so we can
-         *  do this here for now.  if things change and we can somehow
-         * create stringlits at runtime, this must
-         *  move to the runtime execution path
-         *
-         *  so, only if interpolation is turned on AND it starts
-         *  with a " AND it has a  directive or reference, then we
-         *  can  interpolate.  Otherwise, don't bother.
+         * the stringlit is set at template parse time, so we can do this here
+         * for now. if things change and we can somehow create stringlits at
+         * runtime, this must move to the runtime execution path
+         * 
+         * so, only if interpolation is turned on AND it starts with a " AND it
+         * has a directive or reference, then we can interpolate. Otherwise,
+         * don't bother.
          */
 
-        interpolate = rsvc.getBoolean(RuntimeConstants.INTERPOLATE_STRINGLITERALS , true)
-            && getFirstToken().image.startsWith("\"")
-            && ((getFirstToken().image.indexOf('$') != -1)
-                 || (getFirstToken().image.indexOf('#') != -1));
+        interpolate = rsvc.getBoolean(
+                RuntimeConstants.INTERPOLATE_STRINGLITERALS, true)
+                && getFirstToken().image.startsWith("\"")
+                && ((getFirstToken().image.indexOf('$') != -1) || (getFirstToken().image
+                        .indexOf('#') != -1));
 
         /*
-         *  get the contents of the string, minus the '/" at each end
+         * get the contents of the string, minus the '/" at each end
          */
 
-        image = getFirstToken().image.substring(1,
-                                                getFirstToken().image.length() - 1);
+        image = getFirstToken().image.substring(1, getFirstToken().image
+                .length() - 1);
+        if (getFirstToken().image.startsWith("\""))
+        {
+            image = unescape(image);
+        }
 
         /**
-         * note.  A kludge on a kludge.  The first part, Geir calls
-         * this the dreaded <MORE> kludge.  Basically, the use of the
-         * <MORE> token eats the last character of an interpolated
-         * string.  EXCEPT when a line comment (##) is in
-         * the string this isn't an issue.
-         *
-         * So, to solve this we look for a line comment.  If it isn't found
-         * we add a space here and remove it later.
+         * note. A kludge on a kludge. The first part, Geir calls this the
+         * dreaded <MORE> kludge. Basically, the use of the <MORE> token eats
+         * the last character of an interpolated string. EXCEPT when a line
+         * comment (##) is in the string this isn't an issue.
+         * 
+         * So, to solve this we look for a line comment. If it isn't found we
+         * add a space here and remove it later.
          */
 
         /**
-         * Note - this should really use a regexp to look for [^\]##
-         * but apparently escaping of line comments isn't working right
-         * now anyway.
+         * Note - this should really use a regexp to look for [^\]## but
+         * apparently escaping of line comments isn't working right now anyway.
          */
         containsLineComment = (image.indexOf("##") != -1);
 
@@ -143,33 +150,34 @@ public class ASTStringLiteral extends SimpleNode
         if (interpolate)
         {
             /*
-             *  now parse and init the nodeTree
+             * now parse and init the nodeTree
              */
-            BufferedReader br = new BufferedReader(new StringReader(interpolateimage));
+            StringReader br = new StringReader(interpolateimage);
 
             /*
              * it's possible to not have an initialization context - or we don't
              * want to trust the caller - so have a fallback value if so
-             *
-             *  Also, do *not* dump the VM namespace for this template
+             * 
+             * Also, do *not* dump the VM namespace for this template
              */
 
-            try 
+            String templateName =
+                (context != null) ? context.getCurrentTemplateName() : "StringLiteral";
+            try
             {
-                nodeTree  = rsvc.parse(br, (context != null) ?
-                        context.getCurrentTemplateName() : "StringLiteral", false);
+                nodeTree = rsvc.parse(br, templateName, false);
             }
             catch (ParseException e)
             {
-                throw new TemplateInitException("Problem parsing String literal.",
-                        e,
-                        (context != null) ? context.getCurrentTemplateName() : "StringLiteral",
-                        getColumn(),
-                        getLine() );
+                String msg = "Failed to parse String literal at "+
+                    Log.formatFileString(templateName, getLine(), getColumn());
+                throw new TemplateInitException(msg, e, templateName, getColumn(), getLine());
             }
-                
+
+            adjTokenLineNums(nodeTree);
+            
             /*
-             *  init with context. It won't modify anything
+             * init with context. It won't modify anything
              */
 
             nodeTree.init(context, rsvc);
@@ -177,9 +185,73 @@ public class ASTStringLiteral extends SimpleNode
 
         return data;
     }
+    
+    /**
+     * Adjust all the line and column numbers that comprise a node so that they
+     * are corrected for the string literals position within the template file.
+     * This is neccessary if an exception is thrown while processing the node so
+     * that the line and column position reported reflects the error position
+     * within the template and not just relative to the error position within
+     * the string literal.
+     */
+    public void adjTokenLineNums(Node node)
+    {
+        Token tok = node.getFirstToken();
+        // Test against null is probably not neccessary, but just being safe
+        while(tok != null && tok != node.getLastToken())
+        {
+            // If tok is on the first line, then the actual column is 
+            // offset by the template column.
+          
+            if (tok.beginLine == 1)
+                tok.beginColumn += getColumn();
+            
+            if (tok.endLine == 1)
+                tok.endColumn += getColumn();
+            
+            tok.beginLine += getLine()- 1;
+            tok.endLine += getLine() - 1;
+            tok = tok.next;
+        }
+    }
+    
+    
+    /**
+     * @since 1.6
+     */
+    public static String unescape(final String string)
+    {
+        int u = string.indexOf("\\u");
+        if (u < 0) return string;
+
+        StrBuilder result = new StrBuilder();
+        
+        int lastCopied = 0;
+
+        for (;;)
+        {
+            result.append(string.substring(lastCopied, u));
+
+            /* we don't worry about an exception here,
+             * because the lexer checked that string is correct */
+            char c = (char) Integer.parseInt(string.substring(u + 2, u + 6), 16);
+            result.append(c);
+
+            lastCopied = u + 6;
+
+            u = string.indexOf("\\u", lastCopied);
+            if (u < 0)
+            {
+                result.append(string.substring(lastCopied));
+                return result.toString();
+            }
+        }
+    }
+
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor,
+     *      java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -187,10 +259,20 @@ public class ASTStringLiteral extends SimpleNode
     }
 
     /**
-     *  renders the value of the string literal
-     *  If the properties allow, and the string literal contains a $ or a #
-     *  the literal is rendered against the context
-     *  Otherwise, the stringlit is returned.
+     * Check to see if this is an interpolated string.
+     * @return true if this is constant (not an interpolated string)
+     * @since 1.6
+     */
+    public boolean isConstant()
+    {
+        return !interpolate;
+    }
+
+    /**
+     * renders the value of the string literal If the properties allow, and the
+     * string literal contains a $ or a # the literal is rendered against the
+     * context Otherwise, the stringlit is returned.
+     * 
      * @param context
      * @return result of the rendering.
      */
@@ -201,7 +283,7 @@ public class ASTStringLiteral extends SimpleNode
             try
             {
                 /*
-                 *  now render against the real context
+                 * now render against the real context
                  */
 
                 StringWriter writer = new StringWriter();
@@ -214,8 +296,8 @@ public class ASTStringLiteral extends SimpleNode
                 String ret = writer.toString();
 
                 /*
-                 * if appropriate, remove the space from the end
-                 * (dreaded <MORE> kludge part deux)
+                 * if appropriate, remove the space from the end (dreaded <MORE>
+                 * kludge part deux)
                  */
                 if (!containsLineComment && ret.length() > 0)
                 {
@@ -228,41 +310,25 @@ public class ASTStringLiteral extends SimpleNode
             }
 
             /**
-             * For interpolated Strings we do not pass exceptions 
-             * through -- just log the problem and move on.
-             */
-            catch( ParseErrorException  e )
-            {
-                log.error("Error in interpolating string literal", e);
-            }
-            catch( MethodInvocationException  e )
-            {
-                log.error("Error in interpolating string literal", e);
-            }
-            catch( ResourceNotFoundException  e )
-            {
-                log.error("Error in interpolating string literal", e);
-            }
-            
-            /**
              * pass through application level runtime exceptions
              */
-            catch( RuntimeException e )
+            catch (RuntimeException e)
             {
                 throw e;
             }
-            
-            catch( IOException  e )
+
+            catch (IOException e)
             {
-                log.error("Error in interpolating string literal", e);
+                String msg = "Error in interpolating string literal";
+                log.error(msg, e);
+                throw new VelocityException(msg, e);
             }
 
         }
 
         /*
-         *  ok, either not allowed to interpolate, there wasn't
-         *  a ref or directive, or we failed, so
-         *  just output the literal
+         * ok, either not allowed to interpolate, there wasn't a ref or
+         * directive, or we failed, so just output the literal
          */
 
         return image;

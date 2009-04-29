@@ -20,7 +20,7 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import java.lang.reflect.InvocationTargetException;
-
+import org.apache.velocity.exception.VelocityException;
 import org.apache.velocity.runtime.RuntimeLogger;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.log.RuntimeLoggerLog;
@@ -35,7 +35,7 @@ import org.apache.velocity.util.introspection.Introspector;
  * the case.
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: GetExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: GetExecutor.java 687177 2008-08-19 22:00:32Z nbubna $
  */
 public class GetExecutor extends AbstractExecutor
 {
@@ -49,6 +49,7 @@ public class GetExecutor extends AbstractExecutor
      * @param introspector
      * @param clazz
      * @param property
+     * @since 1.5
      */
     public GetExecutor(final Log log, final Introspector introspector,
             final Class clazz, final String property)
@@ -83,6 +84,9 @@ public class GetExecutor extends AbstractExecutor
         this(new RuntimeLoggerLog(rlog), introspector, clazz, property);
     }
 
+    /**
+     * @since 1.5
+     */
     protected void discover(final Class clazz)
     {
         try
@@ -98,7 +102,9 @@ public class GetExecutor extends AbstractExecutor
         }
         catch(Exception e)
         {
-            log.error("While looking for get('" + params[0] + "') method:", e);
+            String msg = "Exception while looking for get('" + params[0] + "') method";
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 

@@ -21,6 +21,7 @@ package org.apache.velocity.context;
 
 import java.util.HashMap;
 import java.util.Stack;
+import java.util.List;
 
 import org.apache.velocity.app.event.EventCartridge;
 import org.apache.velocity.runtime.resource.Resource;
@@ -39,7 +40,7 @@ import org.apache.velocity.util.introspection.IntrospectionCacheData;
  *  is derived from this.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: InternalContextBase.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: InternalContextBase.java 679861 2008-07-25 17:17:50Z nbubna $
  */
 class InternalContextBase implements InternalHousekeepingContext, InternalEventContext
 {
@@ -59,6 +60,11 @@ class InternalContextBase implements InternalHousekeepingContext, InternalEventC
     private Stack templateNameStack = new Stack();
 
     /**
+     *  Velocimacro name stack. The stack top contains the current macro name.
+     */
+    private Stack macroNameStack = new Stack();
+
+    /**
      *  EventCartridge we are to carry.  Set by application
      */
     private EventCartridge eventCartridge = null;
@@ -73,6 +79,12 @@ class InternalContextBase implements InternalHousekeepingContext, InternalEventC
      *  Is rendering allowed?  Defaults to true, can be changed by #stop directive.
      */
     private boolean allowRendering = true;
+
+    /**
+     *  List for holding the macro libraries. Contains the macro library
+     *  template name as strings.
+     */
+    private List macroLibraries = null;
 
     /**
      *  set the current template name on top of stack
@@ -113,6 +125,61 @@ class InternalContextBase implements InternalHousekeepingContext, InternalEventC
     public Object[] getTemplateNameStack()
     {
         return templateNameStack.toArray();
+    }
+
+    /**
+     *  set the current macro name on top of stack
+     *
+     *  @param s current macro name
+     */
+    public void pushCurrentMacroName( String s )
+    {
+        macroNameStack.push(s);
+    }
+
+    /**
+     *  remove the current macro name from stack
+     */
+    public void popCurrentMacroName()
+    {
+        macroNameStack.pop();
+    }
+
+    /**
+     *  get the current macro name
+     *
+     *  @return String current macro name
+     */
+    public String getCurrentMacroName()
+    {
+        if (macroNameStack.empty())
+        {
+            return "<undef>";
+        }
+        else
+        {
+            return (String) macroNameStack.peek();
+        }
+    }
+
+    /**
+     *  get the current macro call depth
+     *
+     *  @return int current macro call depth
+     */
+    public int getCurrentMacroCallDepth()
+    {
+        return macroNameStack.size();
+    }
+
+    /**
+     *  get the current macro name stack
+     *
+     *  @return Object[] with the macro name stack contents.
+     */
+    public Object[] getMacroNameStack()
+    {
+        return macroNameStack.toArray();
     }
 
     /**
@@ -172,6 +239,22 @@ class InternalContextBase implements InternalHousekeepingContext, InternalEventC
         allowRendering = v;
     }
 
+    /**
+     * @see org.apache.velocity.context.InternalHousekeepingContext#setMacroLibraries(List)
+     */
+    public void setMacroLibraries(List macroLibraries)
+    {
+        this.macroLibraries = macroLibraries;
+    }
+
+    /**
+     * @see org.apache.velocity.context.InternalHousekeepingContext#getMacroLibraries()
+     */
+    public List getMacroLibraries()
+    {
+        return macroLibraries;
+    }
+
 
     /**
      * @see org.apache.velocity.context.InternalEventContext#attachEventCartridge(org.apache.velocity.app.event.EventCartridge)
@@ -193,4 +276,5 @@ class InternalContextBase implements InternalHousekeepingContext, InternalEventC
         return eventCartridge;
     }
 }
+
 

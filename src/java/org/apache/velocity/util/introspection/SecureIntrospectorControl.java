@@ -23,7 +23,8 @@ package org.apache.velocity.util.introspection;
  * Interface used to determine which methods are allowed to be executed.
  *
  * @author <a href="Will Glass-Husain">wglass@forio.com</a>
- * @version $Id: SecureIntrospectorControl.java 470261 2006-11-02 07:32:37Z wglass $
+ * @version $Id: SecureIntrospectorControl.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public interface SecureIntrospectorControl
 {

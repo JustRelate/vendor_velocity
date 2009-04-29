@@ -38,9 +38,9 @@ import org.apache.velocity.util.StringUtils;
  * </code>
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
- * @version $Id: IncludeNotFound.java 470256 2006-11-02 07:20:36Z wglass $
+ * @version $Id: IncludeNotFound.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
-
 public class IncludeNotFound implements IncludeEventHandler,RuntimeServicesAware {
 
     private static final String DEFAULT_NOT_FOUND = "notfound.vm";
@@ -70,7 +70,7 @@ public class IncludeNotFound implements IncludeEventHandler,RuntimeServicesAware
         boolean exists = (rs.getLoaderNameForResource(includeResourcePath) != null);
         if (!exists)
         {
-            if (rs.getLoaderNameForResource(notfound) == null)
+            if (rs.getLoaderNameForResource(notfound) != null)
             {
                 return notfound;
 

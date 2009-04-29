@@ -25,8 +25,9 @@ import org.apache.velocity.app.event.EventHandlerUtil;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.TemplateInitException;
+import org.apache.velocity.exception.VelocityException;
+import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.util.introspection.Info;
 import org.apache.velocity.util.introspection.IntrospectionCacheData;
 import org.apache.velocity.util.introspection.VelPropertyGet;
@@ -45,7 +46,7 @@ import org.apache.velocity.util.introspection.VelPropertyGet;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTIdentifier.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTIdentifier.java 720228 2008-11-24 16:58:33Z nbubna $
  */
 public class ASTIdentifier extends SimpleNode
 {
@@ -55,6 +56,11 @@ public class ASTIdentifier extends SimpleNode
      *  This is really immutable after the init, so keep one for this node
      */
     protected Info uberInfo;
+    
+    /**
+     * Indicates if we are running in strict reference mode.
+     */
+    protected boolean strictRef = false;
 
     /**
      * @param id
@@ -75,7 +81,7 @@ public class ASTIdentifier extends SimpleNode
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -97,9 +103,10 @@ public class ASTIdentifier extends SimpleNode
 
         identifier = getFirstToken().image;
 
-        uberInfo = new Info(context.getCurrentTemplateName(),
-                getLine(), getColumn());
+        uberInfo = new Info(getTemplateName(), getLine(), getColumn());
 
+        strictRef = rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false);
+        
         return data;
     }
 
@@ -159,7 +166,9 @@ public class ASTIdentifier extends SimpleNode
         }
         catch(Exception e)
         {
-            log.error("ASTIdentifier.execute() : identifier = "+identifier, e);
+            String msg = "ASTIdentifier.execute() : identifier = "+identifier;
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
 
         /*
@@ -168,7 +177,16 @@ public class ASTIdentifier extends SimpleNode
 
         if (vg == null)
         {
-            return null;
+            if (strictRef)
+            {
+                throw new MethodInvocationException("Object '" + o.getClass().getName() +              
+                    "' does not contain property '" + identifier + "'", null, identifier,
+                    uberInfo.getTemplateName(), uberInfo.getLine(), uberInfo.getColumn());
+            }
+            else
+            {
+                return null;
+            }
         }
 
         /*
@@ -207,7 +225,7 @@ public class ASTIdentifier extends SimpleNode
                       + " in  " + o.getClass()
                       + " threw exception "
                       + ite.getTargetException().toString(),
-                      ite.getTargetException(), vg.getMethodName(), context.getCurrentTemplateName(), this.getLine(), this.getColumn());
+                      ite.getTargetException(), vg.getMethodName(), getTemplateName(), this.getLine(), this.getColumn());
                 }
             }
             else
@@ -221,7 +239,7 @@ public class ASTIdentifier extends SimpleNode
                 + " in  " + o.getClass()
                 + " threw exception "
                 + ite.getTargetException().toString(),
-                ite.getTargetException(), vg.getMethodName(), context.getCurrentTemplateName(), this.getLine(), this.getColumn());
+                ite.getTargetException(), vg.getMethodName(), getTemplateName(), this.getLine(), this.getColumn());
 
 
             }
@@ -239,11 +257,11 @@ public class ASTIdentifier extends SimpleNode
         }
         catch(Exception e)
         {
-            log.error("ASTIdentifier() : exception invoking method "
+            String msg = "ASTIdentifier() : exception invoking method "
                         + "for identifier '" + identifier + "' in "
-                        + o.getClass() + " : " + e);
+                        + o.getClass();
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
-
-        return null;
     }
 }

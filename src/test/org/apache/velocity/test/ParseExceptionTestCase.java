@@ -34,7 +34,7 @@ import org.apache.velocity.exception.ParseErrorException;
  * Test parser exception is generated with appropriate info.
  *
  * @author <a href="mailto:wglass@apache.org">Will Glass-Husain</a>
- * @version $Id: ParseExceptionTestCase.java 471372 2006-11-05 06:02:20Z wglass $
+ * @version $Id: ParseExceptionTestCase.java 576946 2007-09-18 15:18:12Z wglass $
  */
 public class ParseExceptionTestCase extends BaseTestCase
 {
@@ -165,6 +165,41 @@ public class ParseExceptionTestCase extends BaseTestCase
             assertEquals("testMacro",e.getTemplateName());
             assertEquals(1,e.getLineNumber());
             assertEquals(7,e.getColumnNumber());
+        }
+        finally
+        {
+            if (writer != null)
+            {
+                writer.close();
+            }
+        }
+    }
+
+    /**
+     * Tests that parseException has useful info when thrown in VelocityEngine.evaluate()
+     * and the problem comes from a macro definition
+     * @throws Exception
+     */
+    public void testParseExceptionFromMacroDefBody ()
+            throws Exception
+    {
+        VelocityEngine ve = new VelocityEngine();
+        ve.init();
+
+        VelocityContext context = new VelocityContext();
+        
+        Writer writer = new StringWriter();
+
+        try
+        {
+            ve.evaluate(context,writer,"testMacro","#macro(aa $blarg) #set(!! = bb) #end #aa('aa')");
+            fail("Should have thown a ParseErrorException");
+        }
+        catch (ParseErrorException e)
+        {
+            assertEquals("testMacro",e.getTemplateName());
+            assertEquals(1,e.getLineNumber());
+            assertEquals(24,e.getColumnNumber());
         }
         finally
         {

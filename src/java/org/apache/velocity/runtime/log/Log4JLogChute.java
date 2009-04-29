@@ -36,16 +36,16 @@ import org.apache.velocity.util.ExceptionUtils;
  * @author <a href="mailto:geirm@apache.org>Geir Magnusson Jr.</a>
  * @author <a href="mailto:dlr@finemaltcoding.com>Daniel L. Rall</a>
  * @author <a href="mailto:nbubna@apache.org>Nathan Bubna</a>
- * @version $Id: Log4JLogChute.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: Log4JLogChute.java 718424 2008-11-17 22:50:43Z nbubna $
  * @since Velocity 1.5
+ * @since 1.5
  */
 public class Log4JLogChute implements LogChute
 {
-    /**
-     *
-     */
     public static final String RUNTIME_LOG_LOG4J_LOGGER =
             "runtime.log.logsystem.log4j.logger";
+    public static final String RUNTIME_LOG_LOG4J_LOGGER_LEVEL =
+            "runtime.log.logsystem.log4j.logger.level";
 
     private RuntimeServices rsvc = null;
     private boolean hasTrace = false;
@@ -86,6 +86,14 @@ public class Log4JLogChute implements LogChute
             }
         }
 
+        /* get and set specified level for this logger */
+        String lvl = rsvc.getString(RUNTIME_LOG_LOG4J_LOGGER_LEVEL);
+        if (lvl != null)
+        {
+            Level level = Level.toLevel(lvl);
+            logger.setLevel(level);
+        }
+        
         /* Ok, now let's see if this version of log4j supports the trace level. */
         try
         {
@@ -116,14 +124,12 @@ public class Log4JLogChute implements LogChute
 
             // don't inherit appenders from higher in the logger heirarchy
             logger.setAdditivity(false);
-            // this impl checks levels (by default don't include trace level)
-            logger.setLevel(Level.DEBUG);
             logger.addAppender(appender);
             log(DEBUG_ID, "Log4JLogChute initialized using file '"+file+'\'');
         }
         catch (IOException ioe)
         {
-            rsvc.getLog().warn("Could not create file appender '"+file+'\'', ioe);
+            rsvc.getLog().error("Could not create file appender '"+file+'\'', ioe);
             throw ExceptionUtils.createRuntimeException("Error configuring Log4JLogChute : ", ioe);
         }
     }
@@ -144,9 +150,6 @@ public class Log4JLogChute implements LogChute
             case LogChute.INFO_ID:
                 logger.info(message);
                 break;
-            case LogChute.DEBUG_ID:
-                logger.debug(message);
-                break;
             case LogChute.TRACE_ID:
                 if (hasTrace)
                 {
@@ -160,6 +163,7 @@ public class Log4JLogChute implements LogChute
             case LogChute.ERROR_ID:
                 logger.error(message);
                 break;
+            case LogChute.DEBUG_ID:
             default:
                 logger.debug(message);
                 break;
@@ -179,9 +183,6 @@ public class Log4JLogChute implements LogChute
             case LogChute.INFO_ID:
                 logger.info(message, t);
                 break;
-            case LogChute.DEBUG_ID:
-                logger.debug(message, t);
-                break;
             case LogChute.TRACE_ID:
                 if (hasTrace)
                 {
@@ -195,6 +196,7 @@ public class Log4JLogChute implements LogChute
             case LogChute.ERROR_ID:
                 logger.error(message, t);
                 break;
+            case LogChute.DEBUG_ID:
             default:
                 logger.debug(message, t);
                 break;

@@ -24,7 +24,6 @@ import java.math.BigDecimal;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 
 
 /**
@@ -32,6 +31,7 @@ import org.apache.velocity.runtime.parser.ParserVisitor;
  * or a BigDecimal.
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
+ * @since 1.5
  */
 public class ASTFloatingPointLiteral extends SimpleNode
 {
@@ -58,7 +58,7 @@ public class ASTFloatingPointLiteral extends SimpleNode
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {

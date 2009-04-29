@@ -19,6 +19,7 @@ package org.apache.velocity.util.introspection;
  * under the License.    
  */
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.Enumeration;
@@ -38,6 +39,7 @@ import org.apache.velocity.runtime.parser.node.PutExecutor;
 import org.apache.velocity.runtime.parser.node.SetExecutor;
 import org.apache.velocity.runtime.parser.node.SetPropertyExecutor;
 import org.apache.velocity.util.ArrayIterator;
+import org.apache.velocity.util.ArrayListWrapper;
 import org.apache.velocity.util.EnumerationIterator;
 
 /**
@@ -46,7 +48,7 @@ import org.apache.velocity.util.EnumerationIterator;
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: UberspectImpl.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: UberspectImpl.java 723123 2008-12-03 23:14:34Z nbubna $
  */
 public class UberspectImpl implements Uberspect, UberspectLoggable
 {
@@ -65,7 +67,7 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
      *  makes sure that the log gets set before this is called,
      *  we can initialize the Introspector using the log object.
      */
-    public void init()
+    public void init() throws Exception
     {
         introspector = new Introspector(log);
     }
@@ -75,6 +77,7 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
      *  else.
      *
      * @param log The logger instance to use.
+     * @since 1.5
      */
     public void setLog(Log log)
     {
@@ -138,9 +141,34 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
             }
             return new EnumerationIterator((Enumeration) obj);
         }
+        else
+        {
+            // look for an iterator() method to support the JDK5 Iterable
+            // interface or any user tools/DTOs that want to work in
+            // foreach without implementing the Collection interface
+            Class type = obj.getClass();
+            try
+            {
+                Method iter = type.getMethod("iterator", null);
+                Class returns = iter.getReturnType();
+                if (Iterator.class.isAssignableFrom(returns))
+                {
+                    return (Iterator)iter.invoke(obj, null);
+                }
+                else
+                {
+                    log.debug("iterator() method of reference in #foreach loop at "
+                              + i + " does not return a true Iterator.");
+                }
+            }
+            catch (NoSuchMethodException nsme)
+            {
+                // eat this one, but let all other exceptions thru
+            }
+        }
 
         /*  we have no clue what this is  */
-        log.info("Could not determine type of iterator in #foreach loop at " + i);
+        log.debug("Could not determine type of iterator in #foreach loop at " + i);
 
         return null;
     }
@@ -163,8 +191,34 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
         }
 
         Method m = introspector.getMethod(obj.getClass(), methodName, args);
+        if (m != null)
+        {
+            return new VelMethodImpl(m);
+        }
 
-        return (m != null) ? new VelMethodImpl(m) : null;
+        Class cls = obj.getClass();
+        // if it's an array
+        if (cls.isArray())
+        {
+            // check for support via our array->list wrapper
+            m = introspector.getMethod(ArrayListWrapper.class, methodName, args);
+            if (m != null)
+            {
+                // and create a method that knows to wrap the value
+                // before invoking the method
+                return new VelMethodImpl(m, true);
+            }
+        }
+        // watch for classes, to allow calling their static methods (VELOCITY-102)
+        else if (cls == Class.class)
+        {
+            m = introspector.getMethod((Class)obj, methodName, args);
+            if (m != null)
+            {
+                return new VelMethodImpl(m);
+            }
+        }
+        return null;
     }
 
     /**
@@ -272,13 +326,24 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
     public static class VelMethodImpl implements VelMethod
     {
         final Method method;
+        Boolean isVarArg;
+        boolean wrapArray;
 
         /**
          * @param m
          */
         public VelMethodImpl(Method m)
         {
-            method = m;
+            this(m, false);
+        }
+
+        /**
+         * @since 1.6
+         */
+        public VelMethodImpl(Method method, boolean wrapArray)
+        {
+            this.method = method;
+            this.wrapArray = wrapArray;
         }
 
         private VelMethodImpl()
@@ -289,10 +354,128 @@ public class UberspectImpl implements Uberspect, UberspectLoggable
         /**
          * @see VelMethod#invoke(java.lang.Object, java.lang.Object[])
          */
-        public Object invoke(Object o, Object[] params)
+        public Object invoke(Object o, Object[] actual)
             throws Exception
         {
-            return method.invoke(o, params);
+            // if we're pretending an array is a list...
+            if (wrapArray)
+            {
+                o = new ArrayListWrapper(o);
+            }
+
+            if (isVarArg())
+            {
+                Class[] formal = method.getParameterTypes();
+                int index = formal.length - 1;
+                if (actual.length >= index)
+                {
+                    Class type = formal[index].getComponentType();
+                    actual = handleVarArg(type, index, actual);
+                }
+            }
+
+            // call extension point invocation
+            return doInvoke(o, actual);
+        }
+
+        /**
+         * Offers an extension point for subclasses (in alternate Uberspects)
+         * to alter the invocation after any array wrapping or varargs handling
+         * has already been completed.
+         * @since 1.6
+         */
+        protected Object doInvoke(Object o, Object[] actual) throws Exception
+        {
+            return method.invoke(o, actual);
+        }
+
+        /**
+         * @return true if this method can accept a variable number of arguments
+         * @since 1.6
+         */
+        public boolean isVarArg()
+        {
+            if (isVarArg == null)
+            {
+                Class[] formal = method.getParameterTypes();
+                if (formal == null || formal.length == 0)
+                {
+                    this.isVarArg = Boolean.FALSE;
+                }
+                else
+                {
+                    Class last = formal[formal.length - 1];
+                    // if the last arg is an array, then
+                    // we consider this a varargs method
+                    this.isVarArg = Boolean.valueOf(last.isArray());
+                }
+            }
+            return isVarArg.booleanValue();
+        }
+
+        /**
+         * @param type The vararg class type (aka component type
+         *             of the expected array arg)
+         * @param index The index of the vararg in the method declaration
+         *              (This will always be one less than the number of
+         *               expected arguments.)
+         * @param actual The actual parameters being passed to this method
+         * @returns The actual parameters adjusted for the varargs in order
+         *          to fit the method declaration.
+         */
+        private Object[] handleVarArg(final Class type,
+                                      final int index,
+                                      Object[] actual)
+        {
+            // if no values are being passed into the vararg
+            if (actual.length == index)
+            {
+                // copy existing args to new array
+                Object[] newActual = new Object[actual.length + 1];
+                System.arraycopy(actual, 0, newActual, 0, actual.length);
+                // create an empty array of the expected type
+                newActual[index] = Array.newInstance(type, 0);
+                actual = newActual;
+            }
+            // if one value is being passed into the vararg
+            else if (actual.length == index + 1 && actual[index] != null)
+            {
+                // make sure the last arg is an array of the expected type
+                Class argClass = actual[index].getClass();
+                if (!argClass.isArray() &&
+                    IntrospectionUtils.isMethodInvocationConvertible(type,
+                                                                     argClass,
+                                                                     false))
+                {
+                    // create a 1-length array to hold and replace the last param
+                    Object lastActual = Array.newInstance(type, 1);
+                    Array.set(lastActual, 0, actual[index]);
+                    actual[index] = lastActual;
+                }
+            }
+            // if multiple values are being passed into the vararg
+            else if (actual.length > index + 1)
+            {
+                // put the last and extra actual in an array of the expected type
+                int size = actual.length - index;
+                Object lastActual = Array.newInstance(type, size);
+                for (int i = 0; i < size; i++)
+                {
+                    Array.set(lastActual, i, actual[index + i]);
+                }
+
+                // put all into a new actual array of the appropriate size
+                Object[] newActual = new Object[index + 1];
+                for (int i = 0; i < index; i++)
+                {
+                    newActual[i] = actual[i];
+                }
+                newActual[index] = lastActual;
+
+                // replace the old actual array
+                actual = newActual;
+            }
+            return actual;
         }
 
         /**

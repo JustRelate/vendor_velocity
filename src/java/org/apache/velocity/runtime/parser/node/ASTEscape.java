@@ -19,12 +19,11 @@ package org.apache.velocity.runtime.parser.node;
  * under the License.    
  */
 
-import java.io.Writer;
 import java.io.IOException;
+import java.io.Writer;
 
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 
 /**
  * This class is responsible for handling Escapes
@@ -34,7 +33,7 @@ import org.apache.velocity.runtime.parser.ParserVisitor;
  * what controls the generation of this class.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTEscape.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTEscape.java 517553 2007-03-13 06:09:58Z wglass $
  */
 public class ASTEscape extends SimpleNode
 {
@@ -60,7 +59,7 @@ public class ASTEscape extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {

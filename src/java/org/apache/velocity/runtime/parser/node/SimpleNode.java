@@ -23,6 +23,7 @@ import java.io.IOException;
 import java.io.Writer;
 
 import org.apache.commons.lang.builder.ToStringBuilder;
+import org.apache.commons.lang.text.StrBuilder;
 import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
@@ -31,7 +32,6 @@ import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.runtime.parser.Token;
 
 /**
@@ -55,6 +55,7 @@ public class SimpleNode implements Node
     protected int id;
 
     /** */
+    // TODO - It seems that this field is only valid when parsing, and should not be kept around.    
     protected Parser parser;
 
     /** */
@@ -71,6 +72,9 @@ public class SimpleNode implements Node
 
     /** */
     protected Token last;
+    
+    
+    protected String templateName;
 
     /**
      * @param i
@@ -88,6 +92,7 @@ public class SimpleNode implements Node
     {
         this(i);
         parser = p;
+        templateName = parser.currentTemplateName;
     }
 
     /**
@@ -182,7 +187,7 @@ public class SimpleNode implements Node
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.Node#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.Node#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -191,7 +196,7 @@ public class SimpleNode implements Node
 
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.Node#childrenAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.Node#childrenAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object childrenAccept(ParserVisitor visitor, Object data)
     {
@@ -246,6 +251,14 @@ public class SimpleNode implements Node
         }
     }
 
+    /**
+     * Return a string that tells the current location of this node.
+     */
+    protected String getLocation(InternalContextAdapter context)
+    {
+        return Log.formatFileString(this);
+    }
+
     // All additional methods
 
     /**
@@ -253,15 +266,20 @@ public class SimpleNode implements Node
      */
     public String literal()
     {
-        Token t = first;
-        StringBuffer sb = new StringBuffer(t.image);
+        // if we have only one string, just return it and avoid
+        // buffer allocation. VELOCITY-606
+        if (first == last)
+        {
+            return NodeUtils.tokenLiteral(first);
+        }
 
+        Token t = first;
+        StrBuilder sb = new StrBuilder(NodeUtils.tokenLiteral(t));
         while (t != last)
         {
             t = t.next;
-            sb.append(t.image);
+            sb.append(NodeUtils.tokenLiteral(t));
         }
-
         return sb.toString();
     }
 
@@ -385,9 +403,12 @@ public class SimpleNode implements Node
         return first.beginColumn;
     }
     
+    /**
+     * @since 1.5
+     */
     public String toString()
     {
-        StringBuffer tokens = new StringBuffer();
+        StrBuilder tokens = new StrBuilder();
         
         for (Token t = getFirstToken(); t != null; )
         {
@@ -413,6 +434,11 @@ public class SimpleNode implements Node
             .append("children", jjtGetNumChildren())
             .append("tokens", tokens)
             .toString();
+    }
+
+    public String getTemplateName()
+    {
+      return templateName;
     }
 }
 

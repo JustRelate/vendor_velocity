@@ -60,7 +60,7 @@ import org.apache.commons.collections.ExtendedProperties;
  *
  * @author <a href="mailto:mailmur@yahoo.com">Aki Nieminen</a>
  * @author <a href="mailto:daveb@miceda-data.com">Dave Bryson</a>
- * @version $Id: JarResourceLoader.java 471259 2006-11-04 20:26:57Z henning $
+ * @version $Id: JarResourceLoader.java 691884 2008-09-04 06:46:51Z nbubna $
  */
 public class JarResourceLoader extends ResourceLoader
 {
@@ -103,9 +103,9 @@ public class JarResourceLoader extends ResourceLoader
 
             if (paths != null && paths.size() > 0)
             {
-                log.info("JarResourceLoader : you are using a deprecated configuration"
-                         + " property for the JarResourceLoader -> '<name>.resource.loader.resource.path'."
-                         + " Please change to the conventional '<name>.resource.loader.path'.");
+                log.debug("JarResourceLoader : you are using a deprecated configuration"
+                          + " property for the JarResourceLoader -> '<name>.resource.loader.resource.path'."
+                          + " Please change to the conventional '<name>.resource.loader.path'.");
             }
         }
 
@@ -132,14 +132,17 @@ public class JarResourceLoader extends ResourceLoader
         // Check path information
         if ( path == null )
         {
-            log.error("JarResourceLoader : can not load JAR - JAR path is null");
+            String msg = "JarResourceLoader : can not load JAR - JAR path is null";
+            log.error(msg);
+            throw new RuntimeException(msg);
         }
         if ( !path.startsWith("jar:") )
         {
-            log.error("JarResourceLoader : JAR path must start with jar: -> " +
-                "see java.net.JarURLConnection for information");
+            String msg = "JarResourceLoader : JAR path must start with jar: -> see java.net.JarURLConnection for information";
+            log.error(msg);
+            throw new RuntimeException(msg);
         }
-        if ( !path.endsWith("!/") )
+        if ( path.indexOf("!/") < 0 )
         {
             path += "!/";
         }

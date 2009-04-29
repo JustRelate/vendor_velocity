@@ -28,7 +28,8 @@ import java.io.InputStream;
  * from the classloader.
  *
  *  @author <a href="mailto:wglass@apache.org">Will Glass-Husain</a>
- *  @version $Id: ClassUtils.java 463298 2006-10-12 16:10:32Z henning $
+ *  @version $Id: ClassUtils.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public class ClassUtils {
 

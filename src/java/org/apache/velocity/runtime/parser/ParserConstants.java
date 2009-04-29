@@ -73,8 +73,8 @@ public interface ParserConstants {
   int REFMOD2 = 1;
   int REFMODIFIER = 2;
   int DEFAULT = 3;
-  int PRE_DIRECTIVE = 4;
-  int REFERENCE = 5;
+  int REFERENCE = 4;
+  int PRE_DIRECTIVE = 5;
   int IN_MULTI_LINE_COMMENT = 6;
   int IN_FORMAL_COMMENT = 7;
   int IN_SINGLE_LINE_COMMENT = 8;

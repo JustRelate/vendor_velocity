@@ -23,6 +23,8 @@ import org.apache.velocity.util.introspection.IntrospectionCacheData;
 
 import org.apache.velocity.runtime.resource.Resource;
 
+import java.util.List;
+
 /**
  *  interface to encapsulate the 'stuff' for internal operation of velocity.
  *  We use the context as a thread-safe storage : we take advantage of the
@@ -34,7 +36,7 @@ import org.apache.velocity.runtime.resource.Resource;
  *
  *  @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  *  @author <a href="mailto:Christoph.Reck@dlr.de">Christoph Reck</a>
- *  @version $Id: InternalHousekeepingContext.java 463298 2006-10-12 16:10:32Z henning $
+ *  @version $Id: InternalHousekeepingContext.java 679861 2008-07-25 17:17:50Z nbubna $
  */
 interface InternalHousekeepingContext
 {
@@ -63,6 +65,39 @@ interface InternalHousekeepingContext
      *  @return Object[] with the template name stack contents.
      */
     Object[] getTemplateNameStack();
+
+    /**
+     *  set the current macro name on top of stack
+     *
+     *  @param s current macro name
+     */
+    void pushCurrentMacroName( String s );
+
+    /**
+     *  remove the current macro name from stack
+     */
+    void popCurrentMacroName();
+
+    /**
+     *  get the current macro name
+     *
+     *  @return String current macro name
+     */
+    String getCurrentMacroName();
+
+    /**
+     *  get the current macro call depth
+     *
+     *  @return int current macro call depth
+     */
+    int getCurrentMacroCallDepth();
+
+    /**
+     *  Returns the macro name stack in form of an array.
+     *
+     *  @return Object[] with the macro name stack contents.
+     */
+    Object[] getMacroNameStack();
 
     /**
      *  returns an IntrospectionCache Data (@see IntrospectionCacheData)
@@ -111,5 +146,19 @@ interface InternalHousekeepingContext
      * @param v
      */
      void setAllowRendering(boolean v);
+
+    /**
+     * Set the macro library list for the current template.
+     *
+     * @param macroLibraries list of macro libraries to set
+     */
+     void setMacroLibraries(List macroLibraries);
+
+    /**
+     * Get the macro library list for the current template.
+     *
+     * @return List of macro library names
+     */
+     List getMacroLibraries();
 
 }

@@ -19,6 +19,12 @@ package org.apache.velocity.test.sql;
  * under the License.    
  */
 
+import java.sql.Connection;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import javax.sql.DataSource;
+
 import org.apache.velocity.test.BaseTestCase;
 
 /**
@@ -27,7 +33,7 @@ import org.apache.velocity.test.BaseTestCase;
  * use Derby at some point...
  *
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: BaseSQLTest.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: BaseSQLTest.java 676377 2008-07-13 17:52:27Z wglass $
  */
 
 public abstract class BaseSQLTest
@@ -44,5 +50,13 @@ public abstract class BaseSQLTest
         {
             hsqlDB = new HsqlDB("jdbc:hsqldb:.", path + "/create-db.sql");
         }
+    }
+    
+    public void executeSQL(String sql)
+    throws SQLException
+    {
+        Connection connection = hsqlDB.getConnection();
+        Statement statement = connection.createStatement();
+        statement.executeUpdate(sql);
     }
 }

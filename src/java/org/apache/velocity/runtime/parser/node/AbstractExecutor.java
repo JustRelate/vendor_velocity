@@ -31,7 +31,7 @@ import org.apache.velocity.runtime.log.Log;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@apache.org">Geir Magnusson Jr.</a>
- * @version $Id: AbstractExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: AbstractExecutor.java 685685 2008-08-13 21:43:27Z nbubna $
  */
 public abstract class AbstractExecutor
 {
@@ -74,6 +74,7 @@ public abstract class AbstractExecutor
 
     /**
      * @param method
+     * @since 1.5
      */
     protected void setMethod(final Method method)
     {

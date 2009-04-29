@@ -30,8 +30,9 @@ import junit.framework.TestSuite;
 import org.apache.velocity.Template;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.Velocity;
+import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.RuntimeSingleton;
-import org.apache.velocity.runtime.log.NullLogChute;
+import org.apache.velocity.test.misc.TestLogChute;
 import org.apache.velocity.runtime.resource.loader.FileResourceLoader;
 import org.apache.velocity.runtime.resource.loader.ResourceLoader;
 
@@ -39,7 +40,7 @@ import org.apache.velocity.runtime.resource.loader.ResourceLoader;
  * Test that an instance of a ResourceLoader can be successfully passed in.
  *
  * @author <a href="mailto:wglass@apache.org">Will Glass-Husain</a>
- * @version $Id: ResourceLoaderInstanceTestCase.java 477002 2006-11-20 01:07:43Z henning $
+ * @version $Id: ResourceLoaderInstanceTestCase.java 691334 2008-09-02 18:10:41Z nbubna $
  */
 public class ResourceLoaderInstanceTestCase extends BaseTestCase
 {
@@ -74,6 +75,8 @@ public class ResourceLoaderInstanceTestCase extends BaseTestCase
      */
     private static final String COMPARE_DIR = TEST_COMPARE_DIR + "/resourceinstance/compare";
 
+    private TestLogChute logger = new TestLogChute();
+
     /**
      * Default constructor.
      */
@@ -89,12 +92,14 @@ public class ResourceLoaderInstanceTestCase extends BaseTestCase
         ResourceLoader rl = new FileResourceLoader();
 
         // pass in an instance to Velocity
-        Velocity.addProperty( "resource.loader", "testrl" );
+        Velocity.setProperty( "resource.loader", "testrl" );
         Velocity.setProperty( "testrl.resource.loader.instance", rl );
         Velocity.setProperty( "testrl.resource.loader.path", FILE_RESOURCE_LOADER_PATH );
 
-        Velocity.setProperty(
-                Velocity.RUNTIME_LOG_LOGSYSTEM_CLASS, NullLogChute.class.getName());
+        // actual instance of logger
+        logger.on();
+        Velocity.setProperty(RuntimeConstants.RUNTIME_LOG_LOGSYSTEM, logger);
+        Velocity.setProperty("runtime.log.logsystem.test.level", "debug");
 
         Velocity.init();
     }
@@ -110,6 +115,9 @@ public class ResourceLoaderInstanceTestCase extends BaseTestCase
     public void testResourceLoaderInstance ()
             throws Exception
     {
+//caveman hacks to get gump to give more info
+try
+{
         assureResultsDirectoryExists(RESULTS_DIR);
 
         Template template = RuntimeSingleton.getTemplate(
@@ -118,7 +126,8 @@ public class ResourceLoaderInstanceTestCase extends BaseTestCase
         FileOutputStream fos =
                 new FileOutputStream (
                         getFileName(RESULTS_DIR, "testfile", RESULT_FILE_EXT));
-
+//caveman hack to get gump to give more info
+System.out.println("All needed files exist");
 
         Writer writer = new BufferedWriter(new OutputStreamWriter(fos));
 
@@ -131,11 +140,29 @@ public class ResourceLoaderInstanceTestCase extends BaseTestCase
         template.merge(context, writer);
         writer.flush();
         writer.close();
+}
+catch (Exception e)
+{
+    System.out.println("Log was: "+logger.getLog());
+    System.out.println(e);
+    e.printStackTrace();
+}
 
         if ( !isMatch(RESULTS_DIR, COMPARE_DIR, "testfile",
                         RESULT_FILE_EXT, CMP_FILE_EXT) )
         {
-            fail("Output incorrect.");
+            String result = getFileContents(RESULT_DIR, "testfile", RESULT_FILE_EXT);
+            String compare = getFileContents(COMPARE_DIR, "testfile", CMP_FILE_EXT);
+
+            String msg = "Processed template did not match expected output\n"+
+                "-----Result-----\n"+ result +
+                "----Expected----\n"+ compare +
+                "----------------";
+            
+//caveman hack to get gump to give more info
+System.out.println(msg);
+System.out.println("Log was: "+logger.getLog());
+            fail(msg);
         }
     }
 }

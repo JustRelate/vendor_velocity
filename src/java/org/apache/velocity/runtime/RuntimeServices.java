@@ -19,17 +19,23 @@ package org.apache.velocity.runtime;
  * under the License.    
  */
 
+import java.io.IOException;
 import java.io.Reader;
+import java.io.Writer;
 import java.util.Properties;
+
 import org.apache.commons.collections.ExtendedProperties;
 import org.apache.velocity.Template;
 import org.apache.velocity.app.event.EventCartridge;
+import org.apache.velocity.context.Context;
+import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.ParseErrorException;
 import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.runtime.directive.Directive;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.ParseException;
 import org.apache.velocity.runtime.parser.Parser;
+import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
 import org.apache.velocity.runtime.resource.ContentResource;
 import org.apache.velocity.util.introspection.Introspector;
@@ -44,7 +50,7 @@ import org.apache.velocity.util.introspection.Uberspect;
  *  Currently implemented by RuntimeInstance.
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magusson Jr.</a>
- * @version $Id: RuntimeServices.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: RuntimeServices.java 685724 2008-08-13 23:12:12Z nbubna $
  */
 public interface RuntimeServices extends RuntimeLogger
 {
@@ -62,7 +68,7 @@ public interface RuntimeServices extends RuntimeLogger
      *   <li>Static Content Include System</li>
      *   <li>Velocimacro System</li>
      * </ul>
- * @throws Exception
+     * @throws Exception
      */
     public void init() throws Exception;
 
@@ -145,6 +151,14 @@ public interface RuntimeServices extends RuntimeLogger
     public void init(String configurationFile) throws Exception;
 
     /**
+     * Wraps the String in a StringReader and passes it off to
+     * {@link #parse(Reader,String)}.
+     * @since 1.6
+     */
+    public SimpleNode parse(String string, String templateName)
+        throws ParseException;
+
+    /**
      * Parse the input and return the root of
      * AST node structure.
      * <br><br>
@@ -175,6 +189,72 @@ public interface RuntimeServices extends RuntimeLogger
      */
     public SimpleNode parse( Reader reader, String templateName, boolean dumpNamespace )
         throws ParseException;
+
+    /**
+     * Renders the input string using the context into the output writer.
+     * To be used when a template is dynamically constructed, or want to use
+     * Velocity as a token replacer.
+     *
+     * @param context context to use in rendering input string
+     * @param out  Writer in which to render the output
+     * @param logTag  string to be used as the template name for log
+     *                messages in case of error
+     * @param instring input string containing the VTL to be rendered
+     *
+     * @return true if successful, false otherwise.  If false, see
+     *              Velocity runtime log
+     * @throws ParseErrorException The template could not be parsed.
+     * @throws MethodInvocationException A method on a context object could not be invoked.
+     * @throws ResourceNotFoundException A referenced resource could not be loaded.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
+     * @since Velocity 1.6
+     */
+    public boolean evaluate(Context context, Writer out,
+                            String logTag, String instring) throws IOException;
+
+    /**
+     * Renders the input reader using the context into the output writer.
+     * To be used when a template is dynamically constructed, or want to
+     * use Velocity as a token replacer.
+     *
+     * @param context context to use in rendering input string
+     * @param writer  Writer in which to render the output
+     * @param logTag  string to be used as the template name for log messages
+     *                in case of error
+     * @param reader Reader containing the VTL to be rendered
+     *
+     * @return true if successful, false otherwise.  If false, see
+     *              Velocity runtime log
+     * @throws ParseErrorException The template could not be parsed.
+     * @throws MethodInvocationException A method on a context object could not be invoked.
+     * @throws ResourceNotFoundException A referenced resource could not be loaded.
+     * @throws IOException While reading from the reader or rendering to the writer,
+     *                     an I/O problem occured.
+     * @since Velocity 1.6
+     */
+    public boolean evaluate(Context context, Writer writer,
+                            String logTag, Reader reader) throws IOException;
+
+    /**
+     * Invokes a currently registered Velocimacro with the params provided
+     * and places the rendered stream into the writer.
+     * <br>
+     * Note : currently only accepts args to the VM if they are in the context.
+     *
+     * @param vmName name of Velocimacro to call
+     * @param logTag string to be used for template name in case of error. if null,
+     *               the vmName will be used
+     * @param params keys for args used to invoke Velocimacro, in java format
+     *               rather than VTL (eg  "foo" or "bar" rather than "$foo" or "$bar")
+     * @param context Context object containing data/objects used for rendering.
+     * @param writer  Writer for output stream
+     * @return true if Velocimacro exists and successfully invoked, false otherwise.
+     * @throws IOException While rendering to the writer, an I/O problem occured.
+     * @since 1.6
+     */
+    public boolean invokeVelocimacro(final String vmName, String logTag,
+                                     String[] params, final Context context,
+                                     final Writer writer) throws IOException;
 
     /**
      * Returns a <code>Template</code> from the resource manager.
@@ -269,6 +349,22 @@ public interface RuntimeServices extends RuntimeLogger
      * @return VelocimacroProxy
      */
     public Directive getVelocimacro( String vmName, String templateName  );
+    
+    /**
+     * Returns the appropriate VelocimacroProxy object if strVMname
+     * is a valid current Velocimacro.
+     *
+     * @param vmName  Name of velocimacro requested
+     * @param templateName Name of the namespace.
+     * @param renderingTemplate Name of the template we are currently rendering. This
+     *    information is needed when VM_PERM_ALLOW_INLINE_REPLACE_GLOBAL setting is true
+     *    and template contains a macro with the same name as the global macro library.
+     * 
+     * @since Velocity 1.6
+     * 
+     * @return VelocimacroProxy
+     */
+    public Directive getVelocimacro( String vmName, String templateName, String renderingTemplate  );
 
    /**
      * Adds a new Velocimacro. Usually called by Macro only while parsing.
@@ -277,7 +373,10 @@ public interface RuntimeServices extends RuntimeLogger
      * @param macro  String form of macro body
      * @param argArray  Array of strings, containing the
      *                         #macro() arguments.  the 0th is the name.
- * @param sourceTemplate
+     * @param sourceTemplate
+     * 
+     * @deprecated Use addVelocimacro(String, Node, String[], String) instead
+     *                   
      * @return boolean  True if added, false if rejected for some
      *                  reason (either parameters or permission settings)
      */
@@ -286,6 +385,26 @@ public interface RuntimeServices extends RuntimeLogger
                                           String argArray[],
                                           String sourceTemplate );
 
+    /**
+     * Adds a new Velocimacro. Usually called by Macro only while parsing.
+     *
+     * @param name  Name of velocimacro
+     * @param macro  root AST node of the parsed macro
+     * @param argArray  Array of strings, containing the
+     *                         #macro() arguments.  the 0th is the name.
+     * @param sourceTemplate
+     * 
+     * @since Velocity 1.6
+     *                   
+     * @return boolean  True if added, false if rejected for some
+     *                  reason (either parameters or permission settings)
+     */
+    public boolean addVelocimacro( String name,
+                                          Node macro,
+                                          String argArray[],
+                                          String sourceTemplate );
+                                          
+                                          
     /**
      *  Checks to see if a VM exists
      *
@@ -363,7 +482,7 @@ public interface RuntimeServices extends RuntimeLogger
 
     /**
      * Returns the configured class introspection/reflection
-     * implemenation.
+     * implementation.
      * @return The current Uberspect object.
      */
     public Uberspect getUberspect();
@@ -375,10 +494,10 @@ public interface RuntimeServices extends RuntimeLogger
     public Log getLog();
 
     /**
-      * Returns the event handlers for the application.
+     * Returns the event handlers for the application.
      * @return The event handlers for the application.
-      */
-     public EventCartridge getApplicationEventCartridge();
+     */
+    public EventCartridge getApplicationEventCartridge();
 
 
     /**
@@ -400,4 +519,13 @@ public interface RuntimeServices extends RuntimeLogger
      * @return A new parser instance.
      */
     public Parser createNewParser();
+
+    /**
+     * Retrieve a previously instantiated directive.
+     * @param name name of the directive
+     * @return the directive with that name, if any
+     * @since 1.6
+     */
+    public Directive getDirective(String name);
+
 }

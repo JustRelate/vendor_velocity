@@ -21,7 +21,7 @@ package org.apache.velocity.runtime;
 
 import org.apache.velocity.runtime.parser.Parser;
 import org.apache.velocity.util.SimplePool;
-
+import org.apache.velocity.runtime.parser.CharStream;
 
 /**
  * This wraps the original parser SimplePool class.  It also handles
@@ -29,10 +29,10 @@ import org.apache.velocity.util.SimplePool;
  *
  * @author <a href="mailto:sergek@lokitech.com">Serge Knystautas</a>
  * @version $Id: RuntimeInstance.java 384374 2006-03-08 23:19:30Z nbubna $
+ * @since 1.5
  */
 public class ParserPoolImpl implements ParserPool {
 
-    RuntimeServices rsvc = null;
     SimplePool pool = null;
     int max = RuntimeConstants.NUMBER_OF_PARSERS;
 
@@ -42,7 +42,6 @@ public class ParserPoolImpl implements ParserPool {
      */
     public void initialize(RuntimeServices rsvc)
     {
-        this.rsvc = rsvc;
         max = rsvc.getInt(RuntimeConstants.PARSER_POOL_SIZE, RuntimeConstants.NUMBER_OF_PARSERS);
         pool = new SimplePool(max);
 
@@ -64,15 +63,7 @@ public class ParserPoolImpl implements ParserPool {
      */
     public Parser get()
     {
-        Parser parser = (Parser) pool.get();
-        if (parser == null)
-        {
-            rsvc.getLog().debug("Created new " +
-                    "parser (pool exhausted).  Consider " +
-                    "increasing pool size.");
-            parser = rsvc.createNewParser();
-        }
-        return parser;
+        return (Parser) pool.get();
     }
 
     /**
@@ -81,6 +72,7 @@ public class ParserPoolImpl implements ParserPool {
      */
     public void put(Parser parser)
     {
+        parser.ReInit((CharStream) null);
         pool.put(parser);
     }
 }

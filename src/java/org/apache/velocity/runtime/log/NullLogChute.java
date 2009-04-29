@@ -26,7 +26,8 @@ import org.apache.velocity.runtime.RuntimeServices;
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
  * @author <a href="mailto:nbubna@optonline.net">Nathan Bubna.</a>
- * @version $Id: NullLogChute.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: NullLogChute.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public class NullLogChute implements LogChute
 {

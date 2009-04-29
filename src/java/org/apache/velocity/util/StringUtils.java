@@ -39,7 +39,7 @@ import java.util.StringTokenizer;
  *
  *  @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  *  @author <a href="mailto:dlr@finemaltcoding.com">Daniel Rall</a>
- *  @version $Id: StringUtils.java 463298 2006-10-12 16:10:32Z henning $
+ *  @version $Id: StringUtils.java 685685 2008-08-13 21:43:27Z nbubna $
  */
 public class StringUtils
 {
@@ -613,6 +613,7 @@ public class StringUtils
      * Trim all strings in a List.  Changes the strings in the existing list.
      * @param list
      * @return List of trimmed strings.
+     * @since 1.5
      */
     public static List trimStrings(List list)
     {
@@ -629,6 +630,7 @@ public class StringUtils
      * Trim the string, but pass a null through.
      * @param s
      * @return List of trimmed Strings.
+     * @since 1.5
      */
     public static String nullTrim(String s)
     {

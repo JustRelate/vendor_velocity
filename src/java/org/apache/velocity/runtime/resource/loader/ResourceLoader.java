@@ -25,9 +25,8 @@ import org.apache.velocity.runtime.RuntimeServices;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.resource.Resource;
 import org.apache.velocity.runtime.resource.ResourceCacheImpl;
-
 import org.apache.velocity.exception.ResourceNotFoundException;
-
+import org.apache.velocity.exception.VelocityException;
 import org.apache.commons.collections.ExtendedProperties;
 
 /**
@@ -36,7 +35,7 @@ import org.apache.commons.collections.ExtendedProperties;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ResourceLoader.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ResourceLoader.java 687518 2008-08-21 00:18:03Z nbubna $
  */
 public abstract class ResourceLoader
 {
@@ -88,7 +87,9 @@ public abstract class ResourceLoader
         catch (Exception e)
         {
             isCachingOn = false;
-            log.error("Exception using default of '" + isCachingOn + '\'', e);
+            String msg = "Exception parsing cache setting: "+configuration.getString("cache");
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
         try
         {
@@ -97,8 +98,9 @@ public abstract class ResourceLoader
         catch (Exception e)
         {
             modificationCheckInterval = 0;
-            log.error("Exception using default of '" +
-                      modificationCheckInterval + '\'', e);
+            String msg = "Exception parsing modificationCheckInterval setting: "+configuration.getString("modificationCheckInterval");
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
 
         /*
@@ -111,7 +113,9 @@ public abstract class ResourceLoader
         }
         catch (Exception e)
         {
-            log.error("Exception using default of '" + className + '\'', e);
+            String msg = "Exception retrieving resource cache class name";
+            log.error(msg, e);
+            throw new VelocityException(msg, e);
         }
     }
 
@@ -201,5 +205,53 @@ public abstract class ResourceLoader
     public long getModificationCheckInterval()
     {
         return modificationCheckInterval;
+    }
+
+    /**
+     * Check whether any given resource exists. This is not really
+     * a very efficient test and it can and should be overridden in the
+     * subclasses extending ResourceLoader. 
+     *
+     * @param resourceName The name of a resource.
+     * @return true if a resource exists and can be accessed.
+     * @since 1.6
+     */
+    public boolean resourceExists(final String resourceName)
+    {
+        InputStream is = null;
+        try
+        {
+            is = getResourceStream(resourceName);
+        }
+        catch (ResourceNotFoundException e)
+        {
+            if (log.isDebugEnabled())
+            {
+                log.debug("Could not load resource '" + resourceName 
+                        + "' from ResourceLoader " + this.getClass().getName() 
+                        + ": ", e);
+            }
+        }
+        finally
+        {
+            try
+            {
+                if (is != null)
+                {
+                    is.close();
+                }
+            }
+            catch (Exception e)
+            {
+                if (log.isErrorEnabled())
+                {
+                    String msg = "While closing InputStream for resource '" + resourceName
+                        + "' from ResourceLoader "+this.getClass().getName();
+                    log.error(msg, e);
+                    throw new VelocityException(msg, e);
+                }
+            }
+        }
+        return (is != null);
     }
 }

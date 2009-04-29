@@ -20,9 +20,8 @@ package org.apache.velocity.runtime.parser.node;
  */
 
 import org.apache.velocity.context.InternalContextAdapter;
-import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.exception.MethodInvocationException;
+import org.apache.velocity.runtime.parser.Parser;
 
 /**
  * Please look at the Parser.jjt file which is
@@ -30,7 +29,7 @@ import org.apache.velocity.exception.MethodInvocationException;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTAndNode.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: ASTAndNode.java 687184 2008-08-19 22:16:39Z nbubna $
  */
 public class ASTAndNode extends SimpleNode
 {
@@ -52,7 +51,7 @@ public class ASTAndNode extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -71,7 +70,8 @@ public class ASTAndNode extends SimpleNode
         throws MethodInvocationException
     {
         // TODO: JDK 1.4+ -> valueOf()
-        return new Boolean(evaluate(context));
+        // return new Boolean(evaluate(context));
+        return evaluate(context) ? Boolean.TRUE : Boolean.FALSE;
     }
 
     /**
@@ -90,15 +90,10 @@ public class ASTAndNode extends SimpleNode
         Node right = jjtGetChild(1);
 
         /*
-         *  if either is null, lets log and bail
+         * null == false
          */
-
         if (left == null || right == null)
         {
-            log.error((left == null ? "Left" : "Right") + " side of '&&' operation is null."
-                           + " Operation not possible. "
-                           + context.getCurrentTemplateName() + " [line " + getLine()
-                           + ", column " + getColumn() + "]");
             return false;
         }
 

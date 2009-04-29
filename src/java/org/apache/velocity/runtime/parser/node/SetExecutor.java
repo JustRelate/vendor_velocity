@@ -35,7 +35,8 @@ import org.apache.velocity.runtime.log.Log;
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@apache.org">Geir Magnusson Jr.</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: SetExecutor.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: SetExecutor.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public abstract class SetExecutor
 {

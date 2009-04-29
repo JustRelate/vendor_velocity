@@ -26,7 +26,8 @@ package org.apache.velocity.runtime.log;
  *
 
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: LogDisplayWrapper.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: LogDisplayWrapper.java 685685 2008-08-13 21:43:27Z nbubna $
+ * @since 1.5
  */
 public class LogDisplayWrapper
         extends Log

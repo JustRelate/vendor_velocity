@@ -20,6 +20,7 @@ package org.apache.velocity.runtime.parser;
  */
 
 import org.apache.velocity.exception.ExtendedParseException;
+import org.apache.velocity.runtime.log.Log;
 
 
 /**
@@ -29,7 +30,8 @@ import org.apache.velocity.exception.ExtendedParseException;
  * @see org.apache.velocity.runtime.parser.ParseException
  *
  * @author <a href="hps@intermeta.de">Henning P. Schmiedehausen</a>
- * @version $Id: TemplateParseException.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: TemplateParseException.java 703544 2008-10-10 18:15:53Z nbubna $
+ * @since 1.5
  */
 public class TemplateParseException
         extends ParseException
@@ -210,7 +212,7 @@ public class TemplateParseException
             tok = tok.next;
         }
 
-        retval.append("\"");
+        retval.append("\" at ");
         appendTemplateInfo(retval);
 
         if (expectedTokenSequences.length == 1)
@@ -232,17 +234,7 @@ public class TemplateParseException
      */
     protected void appendTemplateInfo(final StringBuffer sb)
     {
-        sb.append(" at line ").append(getLineNumber())
-          .append(", column ").append(getColumnNumber());
-
-        if (getTemplateName() != null)
-        {
-            sb.append(" of ").append(getTemplateName());
-        }
-        else
-        {
-            sb.append(".");
-        }
+        sb.append(Log.formatFileString(getTemplateName(), getLineNumber(), getColumnNumber()));
         sb.append(eol);
     }
 }

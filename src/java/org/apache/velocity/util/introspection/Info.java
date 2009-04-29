@@ -19,12 +19,14 @@ package org.apache.velocity.util.introspection;
  * under the License.    
  */
 
+import org.apache.velocity.runtime.log.Log;
+
 /**
  *  Little class to carry in info such as template name, line and column
  *  for information error reporting from the uberspector implementations
  *
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: Info.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: Info.java 704179 2008-10-13 17:42:11Z nbubna $
  */
 public class Info
 {
@@ -80,10 +82,10 @@ public class Info
      * [line X, column Y]</code>.
      *
      * @return String representing this object.
+     * @since 1.5
      */
     public String toString()
     {
-        return getTemplateName() + " [line " + getLine() + ", column " +
-            getColumn() + ']';
+        return Log.formatFileString(getTemplateName(), getLine(), getColumn());
     }
 }

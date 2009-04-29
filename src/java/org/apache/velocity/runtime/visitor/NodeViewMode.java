@@ -71,7 +71,7 @@ import org.apache.velocity.runtime.parser.node.SimpleNode;
  * as well.
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
- * @version $Id: NodeViewMode.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: NodeViewMode.java 685685 2008-08-13 21:43:27Z nbubna $
  */
 public class NodeViewMode extends BaseVisitor
 {
@@ -272,6 +272,7 @@ public class NodeViewMode extends BaseVisitor
 
     /**
      * @see org.apache.velocity.runtime.visitor.BaseVisitor#visit(org.apache.velocity.runtime.parser.node.ASTIntegerLiteral, java.lang.Object)
+     * @since 1.5
      */
     public Object visit(ASTIntegerLiteral node, Object data)
     {
@@ -400,6 +401,7 @@ public class NodeViewMode extends BaseVisitor
 
     /**
      * @see org.apache.velocity.runtime.visitor.BaseVisitor#visit(org.apache.velocity.runtime.parser.node.ASTEscapedDirective, java.lang.Object)
+     * @since 1.5
      */
     public Object visit(ASTEscapedDirective node, Object data)
     {
@@ -408,6 +410,7 @@ public class NodeViewMode extends BaseVisitor
 
     /**
      * @see org.apache.velocity.runtime.visitor.BaseVisitor#visit(org.apache.velocity.runtime.parser.node.ASTEscape, java.lang.Object)
+     * @since 1.5
      */
     public Object visit(ASTEscape node, Object data)
     {
@@ -416,6 +419,7 @@ public class NodeViewMode extends BaseVisitor
 
     /**
      * @see org.apache.velocity.runtime.visitor.BaseVisitor#visit(org.apache.velocity.runtime.parser.node.ASTMap, java.lang.Object)
+     * @since 1.5
      */
     public Object visit(ASTMap node, Object data)
     {
@@ -432,6 +436,7 @@ public class NodeViewMode extends BaseVisitor
 
     /**
      * @see org.apache.velocity.runtime.visitor.BaseVisitor#visit(org.apache.velocity.runtime.parser.node.ASTStop, java.lang.Object)
+     * @since 1.5
      */
     public Object visit(ASTStop node, Object data)
     {

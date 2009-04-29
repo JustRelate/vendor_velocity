@@ -27,8 +27,8 @@ import org.apache.velocity.context.InternalContextAdapter;
 import org.apache.velocity.exception.MethodInvocationException;
 import org.apache.velocity.exception.TemplateInitException;
 import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.Parser;
-import org.apache.velocity.runtime.parser.ParserVisitor;
 import org.apache.velocity.util.introspection.Info;
 
 /**
@@ -36,7 +36,7 @@ import org.apache.velocity.util.introspection.Info;
  *
  * @author <a href="mailto:jvanzyl@apache.org">Jason van Zyl</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: ASTSetDirective.java 471381 2006-11-05 08:56:58Z wglass $
+ * @version $Id: ASTSetDirective.java 720228 2008-11-24 16:58:33Z nbubna $
  */
 public class ASTSetDirective extends SimpleNode
 {
@@ -44,11 +44,18 @@ public class ASTSetDirective extends SimpleNode
     private Node right = null;
     private ASTReference left = null;
     boolean logOnNull = false;
+    private boolean allowNull = false;
+    private boolean isInitialized;
 
     /**
      *  This is really immutable after the init, so keep one for this node
      */
     protected Info uberInfo;
+
+    /**
+     * Indicates if we are running in strict reference mode.
+     */
+    protected boolean strictRef = false;
 
     /**
      * @param id
@@ -68,7 +75,7 @@ public class ASTSetDirective extends SimpleNode
     }
 
     /**
-     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.ParserVisitor, java.lang.Object)
+     * @see org.apache.velocity.runtime.parser.node.SimpleNode#jjtAccept(org.apache.velocity.runtime.parser.node.ParserVisitor, java.lang.Object)
      */
     public Object jjtAccept(ParserVisitor visitor, Object data)
     {
@@ -82,28 +89,38 @@ public class ASTSetDirective extends SimpleNode
      * @return Init result.
      * @throws TemplateInitException
      */
-    public Object init(InternalContextAdapter context, Object data)
+    public synchronized Object init(InternalContextAdapter context, Object data)
     throws TemplateInitException
     {
-        /*
-         *  init the tree correctly
-         */
+        /** This method is synchronized to prevent double initialization or initialization while rendering **/
 
-        super.init( context, data );
-
-        uberInfo = new Info(context.getCurrentTemplateName(),
-                getLine(), getColumn());
-
-        right = getRightHandSide();
-        left = getLeftHandSide();
-
-        logOnNull = rsvc.getBoolean(RuntimeConstants.RUNTIME_LOG_REFERENCE_LOG_INVALID, true);
-
-        /*
-         *  grab this now.  No need to redo each time
-         */
-        leftReference = left.getFirstToken().image.substring(1);
-
+        if (!isInitialized)
+        {
+            /*
+             *  init the tree correctly
+             */
+    
+            super.init( context, data );
+    
+            uberInfo = new Info(getTemplateName(),
+                    getLine(), getColumn());
+    
+            right = getRightHandSide();
+            left = getLeftHandSide();
+    
+            logOnNull = rsvc.getBoolean(RuntimeConstants.RUNTIME_LOG_REFERENCE_LOG_INVALID, true);
+            allowNull = rsvc.getBoolean(RuntimeConstants.SET_NULL_ALLOWED, false);
+            strictRef = rsvc.getBoolean(RuntimeConstants.RUNTIME_REFERENCES_STRICT, false);
+            if (strictRef) allowNull = true;  // strictRef implies allowNull
+            
+            /*
+             *  grab this now.  No need to redo each time
+             */
+            leftReference = left.getFirstToken().image.substring(1);
+        
+            isInitialized = true;
+        }
+            
         return data;
     }
 
@@ -129,7 +146,7 @@ public class ASTSetDirective extends SimpleNode
          * it is not allowed by configuration
          */
 
-        if( !rsvc.getBoolean(RuntimeConstants.SET_NULL_ALLOWED,false) )
+        if( !allowNull )
         {
             if ( value == null )
             {                
@@ -140,11 +157,10 @@ public class ASTSetDirective extends SimpleNode
                 {
                     boolean doit = EventHandlerUtil.shouldLogOnNullSet( rsvc, context, left.literal(), right.literal() );
 
-                    if (doit && log.isInfoEnabled())
+                    if (doit && rsvc.getLog().isDebugEnabled())
                     {
-                        log.info("RHS of #set statement is null. Context will not be modified. "
-                                      + context.getCurrentTemplateName() + " [line " + getLine()
-                                      + ", column " + getColumn() + "]");
+                        rsvc.getLog().debug("RHS of #set statement is null. Context will not be modified. "
+                                      + Log.formatFileString(this));
                     }
                 }
                 
@@ -159,7 +175,7 @@ public class ASTSetDirective extends SimpleNode
             }
         }
 
-        if ( value == null )
+        if ( value == null && !strictRef)
         {
             String rightReference = null;
             if (right instanceof ASTExpression)
@@ -169,10 +185,17 @@ public class ASTSetDirective extends SimpleNode
             EventHandlerUtil.invalidSetMethod(rsvc, context, leftReference, rightReference, uberInfo);
 
             /*
-             * if RHS is null it doesn't matter if LHS is simple or complex
-             * because the LHS is removed from context
+             * if RHS is null, remove simple LHS from context
+             * or call setValue() with a null value for complex LHS
              */
-            context.remove( leftReference );
+            if (left.jjtGetNumChildren() == 0)
+            {
+                context.remove( leftReference );
+            }
+            else
+            {
+                left.setValue(context, null);
+            }
 
             return false;
 

@@ -37,7 +37,8 @@ import org.apache.velocity.util.RuntimeServicesAware;
  * </pre>
  * 
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
- * @version $Id: SecureUberspector.java 470261 2006-11-02 07:32:37Z wglass $
+ * @version $Id: SecureUberspector.java 718443 2008-11-18 00:01:56Z nbubna $
+ * @since 1.5
  */
 public class SecureUberspector extends UberspectImpl implements RuntimeServicesAware
 {
@@ -74,22 +75,22 @@ public class SecureUberspector extends UberspectImpl implements RuntimeServicesA
      * @throws Exception
      */
     public Iterator getIterator(Object obj, Info i)
-    throws Exception
+        throws Exception
     {
-        if ((obj != null) && 
-                !((SecureIntrospectorControl) introspector)
-                .checkObjectExecutePermission(obj.getClass(),null))
+        if (obj != null)
         {
-            log.warn ("Cannot retrieve iterator from object of class " + 
-                    obj.getClass().getName() +
-                    " due to security restrictions.");
-            return null;
-
+            SecureIntrospectorControl sic = (SecureIntrospectorControl)introspector;
+            if (sic.checkObjectExecutePermission(obj.getClass(), null))
+            {
+                return super.getIterator(obj, i);
+            }
+            else
+            {
+                log.warn("Cannot retrieve iterator from " + obj.getClass() +
+                         " due to security restrictions.");
+            }
         }
-        else
-        {
-            return super.getIterator(obj,i);
-        }
+        return null;
     }
 
     /**

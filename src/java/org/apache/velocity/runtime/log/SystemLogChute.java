@@ -19,6 +19,7 @@ package org.apache.velocity.runtime.log;
  * under the License.    
  */
 
+import java.io.PrintStream;
 import org.apache.velocity.runtime.RuntimeServices;
 
 /**
@@ -26,7 +27,8 @@ import org.apache.velocity.runtime.RuntimeServices;
  * will be printed to the System.err output stream.
  *
  * @author <a href="mailto:nbubna@apache.org">Nathan Bubna</a>
- * @version $Id: SystemLogChute.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: SystemLogChute.java 718424 2008-11-17 22:50:43Z nbubna $
+ * @since 1.5
  */
 public class SystemLogChute implements LogChute
 {
@@ -35,7 +37,7 @@ public class SystemLogChute implements LogChute
     public static final String RUNTIME_LOG_SYSTEM_ERR_LEVEL_KEY = 
         "runtime.log.logsystem.system.err.level";
 
-    private int enabled = TRACE_ID;
+    private int enabled = WARN_ID;
     private int errLevel = TRACE_ID;
 
     public void init(RuntimeServices rs) throws Exception
@@ -85,14 +87,13 @@ public class SystemLogChute implements LogChute
         {
             case WARN_ID:
                 return WARN_PREFIX;
-            case INFO_ID:
-                return INFO_PREFIX ;
             case DEBUG_ID:
                 return DEBUG_PREFIX;
             case TRACE_ID:
                 return TRACE_PREFIX;
             case ERROR_ID:
                 return ERROR_PREFIX;
+            case INFO_ID:
             default:
                 return INFO_PREFIX;
         }
@@ -134,23 +135,22 @@ public class SystemLogChute implements LogChute
         String prefix = getPrefix(level);
         if (level >= this.errLevel)
         {
-            System.err.print(prefix);
-            System.err.println(message);
-            if (t != null)
-            {
-                System.err.println(t.getMessage());
-                t.printStackTrace();
-            }
+            write(System.err, prefix, message, t);
         }
         else
         {
-            System.out.print(prefix);
-            System.out.println(message);
-            if (t != null)
-            {
-                System.out.println(t.getMessage());
-                t.printStackTrace(System.out);
-            }
+            write(System.out, prefix, message, t);
+        }
+    }
+
+    protected void write(PrintStream stream, String prefix, String message, Throwable t)
+    {
+        stream.print(prefix);
+        stream.println(message);
+        if (t != null)
+        {
+            stream.println(t.getMessage());
+            t.printStackTrace(stream);
         }
     }
 

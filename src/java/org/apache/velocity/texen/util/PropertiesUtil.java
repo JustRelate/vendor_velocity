@@ -32,7 +32,7 @@ import org.apache.velocity.texen.Generator;
  *
  * @author <a href="mailto:leon@opticode.co.za">Leon Messerschmidt</a>
  * @author <a href="mailto:sbailliez@apache.org">Stephane Bailliez</a>
- * @version $Id: PropertiesUtil.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: PropertiesUtil.java 510628 2007-02-22 19:07:59Z nbubna $
  */
 public class PropertiesUtil
 {
@@ -54,11 +54,11 @@ public class PropertiesUtil
         {
             if (templatePath != null)
             {
-        	properties = loadFromTemplatePath(propertiesFile);
+                properties = loadFromTemplatePath(propertiesFile);
             }
             else
             {
-        	properties = loadFromClassPath(propertiesFile);
+                properties = loadFromClassPath(propertiesFile);
             }
         }
         catch (RuntimeException e)

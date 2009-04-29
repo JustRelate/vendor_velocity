@@ -30,6 +30,7 @@ import org.apache.velocity.exception.ResourceNotFoundException;
 import org.apache.velocity.runtime.directive.Directive;
 import org.apache.velocity.runtime.log.Log;
 import org.apache.velocity.runtime.parser.ParseException;
+import org.apache.velocity.runtime.parser.node.Node;
 import org.apache.velocity.runtime.parser.node.SimpleNode;
 import org.apache.velocity.runtime.resource.ContentResource;
 import org.apache.velocity.util.introspection.Introspector;
@@ -84,7 +85,7 @@ import org.apache.velocity.util.introspection.Uberspect;
  *
  * @see org.apache.velocity.runtime.RuntimeInstance
  *
- * @version $Id: RuntimeSingleton.java 463298 2006-10-12 16:10:32Z henning $
+ * @version $Id: RuntimeSingleton.java 685724 2008-08-13 23:12:12Z nbubna $
  */
 public class RuntimeSingleton implements RuntimeConstants
 {
@@ -117,6 +118,7 @@ public class RuntimeSingleton implements RuntimeConstants
      * Returns true if the RuntimeInstance has been successfully initialized.
      * @return True if the RuntimeInstance has been successfully initialized.
      * @see RuntimeInstance#isInitialized()
+     * @since 1.5
      */
     public static boolean isInitialized()
     {
@@ -384,6 +386,7 @@ public class RuntimeSingleton implements RuntimeConstants
      *
      * @return A convenience Log instance that wraps the current LogChute.
      * @see RuntimeInstance#getLog()
+     * @since 1.5
      */
     public static Log getLog()
     {
@@ -459,6 +462,25 @@ public class RuntimeSingleton implements RuntimeConstants
         return ri.getVelocimacro( vmName, templateName );
     }
 
+    /**
+     * Adds a new Velocimacro. Usually called by Macro only while parsing.
+     *
+     * @param name  Name of a new velocimacro.
+     * @param macro  root AST node of the parsed macro
+     * @param argArray  Array of strings, containing the
+     *                         #macro() arguments.  the 0th argument is the name.
+     * @param sourceTemplate The template from which the macro is requested.
+     * @return boolean  True if added, false if rejected for some
+     *                  reason (either parameters or permission settings)
+     * @see RuntimeInstance#addVelocimacro(String, Node, String[], String)
+     * @since 1.6
+     */
+    public static boolean addVelocimacro(String name, Node macro,
+                                         String argArray[], String sourceTemplate)
+    {
+        return ri.addVelocimacro(name, macro, argArray, sourceTemplate);
+    }
+
    /**
     * Adds a new Velocimacro. Usually called by Macro only while parsing.
     *
@@ -469,7 +491,10 @@ public class RuntimeSingleton implements RuntimeConstants
     * @param sourceTemplate Name of the template that contains the velocimacro.
     * @return True if added, false if rejected for some
     *                  reason (either parameters or permission settings)
-     * @see RuntimeInstance#addVelocimacro(String, String, String[], String)
+    *                  
+    * @deprecated Use addVelocimacro(String, Node, String[], String) instead                  
+    *                  
+    * @see RuntimeInstance#addVelocimacro(String, String, String[], String)
     */
     public static boolean addVelocimacro( String name,
                                           String macro,
@@ -592,6 +617,7 @@ public class RuntimeSingleton implements RuntimeConstants
      * Returns the event handlers for the application.
      * @return The event handlers for the application.
      * @see RuntimeInstance#getApplicationEventCartridge()
+     * @since 1.5
      */
      public EventCartridge getEventCartridge()
      {

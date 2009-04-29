@@ -49,10 +49,9 @@ import org.apache.velocity.runtime.log.Log;
  * @author <a href="mailto:szegedia@freemail.hu">Attila Szegedi</a>
  * @author <a href="mailto:paulo.gaspar@krankikom.de">Paulo Gaspar</a>
  * @author <a href="mailto:henning@apache.org">Henning P. Schmiedehausen</a>
- * @version $Id: IntrospectorBase.java 477003 2006-11-20 01:14:22Z henning $
+ * @version $Id: IntrospectorBase.java 685685 2008-08-13 21:43:27Z nbubna $
  */
 public abstract class IntrospectorBase
-	implements IntrospectorCacheListener
 {
     /** Class logger */
     protected final Log log;
@@ -65,9 +64,8 @@ public abstract class IntrospectorBase
      */
     protected IntrospectorBase(final Log log)
     {
-	this.log = log;
-	introspectorCache = new IntrospectorCacheImpl(log); // TODO: Load that from properties.
-	introspectorCache.addListener(this);
+        this.log = log;
+        introspectorCache = new IntrospectorCacheImpl(log); // TODO: Load that from properties.
     }
     
     /**
@@ -96,18 +94,12 @@ public abstract class IntrospectorBase
             throw new IllegalArgumentException("params object is null!");
         }
 
-        ClassMap classMap = null;
-
         IntrospectorCache ic = getIntrospectorCache();
-        
-        synchronized(ic)
-        {
-            classMap = ic.get(c);
 
-            if (classMap == null)
-            {
-                classMap = ic.put(c);
-            }
+        ClassMap classMap = ic.get(c);
+        if (classMap == null)
+        {
+            classMap = ic.put(c);
         }
 
         return classMap.findMethod(name, params);
@@ -117,70 +109,11 @@ public abstract class IntrospectorBase
      * Return the internal IntrospectorCache object.
      * 
      * @return The internal IntrospectorCache object.
+     * @since 1.5
      */
     protected IntrospectorCache getIntrospectorCache()
     {
-	return introspectorCache;
-    }
-    
-    /**
-     * Clears the internal cache.
-     * 
-     * @deprecated Use getIntrospectorCache().clear();
-     */
-    protected void clearCache()
-    {
-        getIntrospectorCache().clear();
+	    return introspectorCache;
     }
 
-    /**
-     * Creates a class map for specific class and registers it in the
-     * cache.  Also adds the qualified name to the name-&gt;class map
-     * for later Classloader change detection.
-     *
-     * @param c The class for which the class map gets generated.
-     * @return A ClassMap object.
-     * 
-     * @deprecated Use getIntrospectorCache().put(c);
-     */
-    protected ClassMap createClassMap(final Class c)
-    {
-        return getIntrospectorCache().put(c);
-    }
-
-    /**
-     * Lookup a given Class object in the cache. If it does not exist, 
-     * check whether this is due to a class change and purge the caches
-     * eventually.
-     *
-     * @param c The class to look up.
-     * @return A ClassMap object or null if it does not exist in the cache.
-     * 
-     * @deprecated Use getIntrospectorCache().get(c);
-     */
-    protected ClassMap lookupClassMap(final Class c)
-    {
-        return getIntrospectorCache().get(c);
-    }
-    
-    /**
-     * @see IntrospectorCacheListener#triggerClear()
-     */
-    public void triggerClear()
-    {
-    }
-    
-    /**
-     * @see IntrospectorCacheListener#triggerGet(Class, ClassMap)
-     */
-    public void triggerGet(Class c, ClassMap classMap)
-    {
-    }
-
-    /**
-     * @see IntrospectorCacheListener#triggerPut(Class, ClassMap)
-     */
-    public void triggerPut(Class c, ClassMap classMap)
-    {
-    }
 }

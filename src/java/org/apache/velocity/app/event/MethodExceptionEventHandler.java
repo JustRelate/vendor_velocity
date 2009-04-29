@@ -31,7 +31,7 @@ import org.apache.velocity.util.ContextAware;
  *
  * @author <a href="mailto:wglass@forio.com">Will Glass-Husain</a>
  * @author <a href="mailto:geirm@optonline.net">Geir Magnusson Jr.</a>
- * @version $Id: MethodExceptionEventHandler.java 470256 2006-11-02 07:20:36Z wglass $
+ * @version $Id: MethodExceptionEventHandler.java 685685 2008-08-13 21:43:27Z nbubna $
  */
 public interface MethodExceptionEventHandler extends EventHandler
 {
@@ -51,6 +51,7 @@ public interface MethodExceptionEventHandler extends EventHandler
 
     /**
      * Defines the execution strategy for methodException
+     * @since 1.5
      */
     static class MethodExceptionExecutor implements EventHandlerMethodExecutor
     {
